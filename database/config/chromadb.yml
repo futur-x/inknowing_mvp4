@@ -1,0 +1,253 @@
+# =============================================================================
+# InKnowing ChromaDB Configuration
+# Description: Vector database configuration for book content and embeddings
+# =============================================================================
+
+default: &default
+  # ChromaDB server settings
+  persist_directory: "./chroma_data"
+  anonymized_telemetry: false
+
+  # Client settings
+  client:
+    timeout: 30
+    max_retries: 3
+
+  # Embedding settings
+  embedding:
+    default_model: "text-embedding-ada-002"  # OpenAI model
+    dimension: 1536
+    batch_size: 100
+
+development:
+  <<: *default
+  host: <%= ENV.fetch("CHROMADB_HOST", "localhost") %>
+  port: <%= ENV.fetch("CHROMADB_PORT", 8000) %>
+  persist_directory: "./chroma_data/development"
+
+  # Development authentication (if enabled)
+  auth:
+    enabled: false
+    token: <%= ENV.fetch("CHROMADB_DEV_TOKEN", "") %>
+
+  # Development settings
+  log_level: debug
+  allow_reset: true
+
+test:
+  <<: *default
+  host: <%= ENV.fetch("TEST_CHROMADB_HOST", "localhost") %>
+  port: <%= ENV.fetch("TEST_CHROMADB_PORT", 8001) %>
+  persist_directory: "./chroma_data/test"
+
+  # Test settings
+  in_memory: true  # Use in-memory storage for tests
+  allow_reset: true
+
+staging:
+  <<: *default
+  host: <%= ENV.fetch("STAGING_CHROMADB_HOST") %>
+  port: <%= ENV.fetch("STAGING_CHROMADB_PORT", 8000) %>
+  persist_directory: "/var/lib/chromadb/staging"
+
+  # Staging authentication
+  auth:
+    enabled: true
+    token: <%= ENV.fetch("STAGING_CHROMADB_TOKEN") %>
+    type: "token"  # token, basic, or custom
+
+  # SSL configuration
+  ssl:
+    enabled: true
+    verify: true
+
+production:
+  <<: *default
+  host: <%= ENV.fetch("PROD_CHROMADB_HOST") %>
+  port: <%= ENV.fetch("PROD_CHROMADB_PORT", 8000) %>
+  persist_directory: "/var/lib/chromadb/production"
+
+  # Production authentication
+  auth:
+    enabled: true
+    token: <%= ENV.fetch("PROD_CHROMADB_TOKEN") %>
+    type: "token"
+
+  # SSL configuration
+  ssl:
+    enabled: true
+    verify: true
+    ca_cert: "/etc/ssl/certs/chromadb-ca.crt"
+
+  # Production cluster settings
+  cluster:
+    enabled: true
+    replicas: 3
+    shards: 2
+
+# Collections configuration
+collections:
+  # Book content vectors
+  books:
+    name: "inknowing_books"
+    metadata:
+      description: "Book content embeddings"
+      created_by: "system"
+
+    # Distance metric: l2, ip (inner product), or cosine
+    distance_metric: "cosine"
+
+    # HNSW index parameters
+    hnsw:
+      space: "cosine"
+      construction_ef: 200
+      search_ef: 100
+      M: 16  # Number of bi-directional links
+      max_elements: 1000000
+
+  # User uploaded documents
+  user_uploads:
+    name: "inknowing_uploads"
+    metadata:
+      description: "User uploaded document embeddings"
+      created_by: "user"
+
+    distance_metric: "cosine"
+
+    hnsw:
+      space: "cosine"
+      construction_ef: 150
+      search_ef: 80
+      M: 12
+      max_elements: 500000
+
+  # Dialogue context vectors
+  dialogue_context:
+    name: "inknowing_dialogue"
+    metadata:
+      description: "Dialogue context embeddings for similarity search"
+      created_by: "system"
+
+    distance_metric: "cosine"
+
+    hnsw:
+      space: "cosine"
+      construction_ef: 100
+      search_ef: 50
+      M: 8
+      max_elements: 200000
+
+# Embedding models configuration
+embedding_models:
+  openai:
+    model: "text-embedding-ada-002"
+    api_key: <%= ENV.fetch("OPENAI_API_KEY") %>
+    dimension: 1536
+    max_batch_size: 100
+    timeout: 30
+
+  custom:
+    model: "custom-embedding-model"
+    endpoint: <%= ENV.fetch("CUSTOM_EMBEDDING_ENDPOINT", "") %>
+    api_key: <%= ENV.fetch("CUSTOM_EMBEDDING_KEY", "") %>
+    dimension: 768
+    max_batch_size: 50
+
+# Search configuration
+search:
+  # Default search parameters
+  default_limit: 10
+  max_limit: 100
+
+  # Relevance threshold
+  min_similarity_score: 0.7
+
+  # Query preprocessing
+  preprocessing:
+    lowercase: true
+    remove_punctuation: true
+    expand_abbreviations: true
+
+  # Result postprocessing
+  postprocessing:
+    deduplication: true
+    reranking: false
+
+# Storage configuration
+storage:
+  # Data persistence
+  persistence:
+    enabled: true
+    sync_interval: 60  # seconds
+    compression: true
+
+  # Backup settings
+  backup:
+    enabled: true
+    schedule: "0 2 * * *"  # Daily at 2 AM
+    retention_days: 30
+    location: "/backups/chromadb"
+
+  # S3 backend (optional)
+  s3:
+    enabled: false
+    bucket: <%= ENV.fetch("CHROMADB_S3_BUCKET", "") %>
+    region: <%= ENV.fetch("CHROMADB_S3_REGION", "us-east-1") %>
+    access_key: <%= ENV.fetch("CHROMADB_S3_ACCESS_KEY", "") %>
+    secret_key: <%= ENV.fetch("CHROMADB_S3_SECRET_KEY", "") %>
+
+# Performance settings
+performance:
+  # Cache configuration
+  cache:
+    enabled: true
+    size: "1gb"
+    ttl: 3600  # seconds
+
+  # Thread pool
+  threads:
+    workers: 4
+    queue_size: 100
+
+  # Batch processing
+  batch:
+    insert_size: 1000
+    update_size: 500
+    delete_size: 100
+
+# Monitoring and metrics
+monitoring:
+  enabled: true
+  metrics_port: 9090
+
+  # Metrics to track
+  metrics:
+    - query_latency
+    - index_size
+    - memory_usage
+    - cache_hit_rate
+    - embedding_time
+
+  # Alerting thresholds
+  alerts:
+    high_latency_ms: 1000
+    low_cache_hit_rate: 0.5
+    high_memory_usage_percent: 80
+
+# Security settings
+security:
+  # Access control
+  access_control:
+    enabled: true
+    default_permission: "read"
+
+  # Rate limiting
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 1000
+    burst_size: 100
+
+  # IP whitelist
+  ip_whitelist:
+    enabled: false
+    allowed_ips: []

@@ -1,0 +1,217 @@
+# =============================================================================
+# InKnowing Redis Configuration
+# Description: Redis cache and session storage configuration
+# =============================================================================
+
+default: &default
+  # Connection settings
+  driver: redis
+  encoding: utf8
+  timeout: 5.0
+  reconnect_attempts: 3
+  reconnect_delay: 0.5
+
+  # Connection pool
+  pool:
+    size: 25
+    timeout: 5
+
+  # Redis Sentinel (for high availability)
+  sentinels: []
+    # - host: sentinel1.example.com
+    #   port: 26379
+    # - host: sentinel2.example.com
+    #   port: 26379
+
+development:
+  <<: *default
+  host: <%= ENV.fetch("REDIS_HOST", "localhost") %>
+  port: <%= ENV.fetch("REDIS_PORT", 6379) %>
+  password: <%= ENV.fetch("REDIS_PASSWORD", "") %>
+  database: 0
+
+  # Development specific
+  logger_level: debug
+  enable_telemetry: false
+
+test:
+  <<: *default
+  host: <%= ENV.fetch("TEST_REDIS_HOST", "localhost") %>
+  port: <%= ENV.fetch("TEST_REDIS_PORT", 6379) %>
+  password: <%= ENV.fetch("TEST_REDIS_PASSWORD", "") %>
+  database: 1
+
+  # Test specific
+  pool:
+    size: 5
+    timeout: 1
+
+staging:
+  <<: *default
+  host: <%= ENV.fetch("STAGING_REDIS_HOST") %>
+  port: <%= ENV.fetch("STAGING_REDIS_PORT", 6379) %>
+  password: <%= ENV.fetch("STAGING_REDIS_PASSWORD") %>
+  database: 0
+  ssl: true
+
+  # Staging cluster configuration
+  cluster:
+    enabled: false
+    nodes: []
+
+production:
+  <<: *default
+  # Redis cluster for production
+  cluster:
+    enabled: true
+    nodes:
+      - <%= ENV.fetch("PROD_REDIS_NODE1") %>
+      - <%= ENV.fetch("PROD_REDIS_NODE2") %>
+      - <%= ENV.fetch("PROD_REDIS_NODE3") %>
+
+  password: <%= ENV.fetch("PROD_REDIS_PASSWORD") %>
+  ssl: true
+  ssl_params:
+    ca_file: "/etc/ssl/certs/redis-ca.crt"
+    cert: "/etc/ssl/certs/redis.crt"
+    key: "/etc/ssl/private/redis.key"
+
+  # Production pool settings
+  pool:
+    size: 50
+    timeout: 5
+
+# Cache stores configuration
+cache_stores:
+  # Session cache (short-lived)
+  session:
+    ttl: 1800  # 30 minutes
+    max_entries: 10000
+    eviction_policy: lru
+    namespace: "inknowing:session"
+
+  # User data cache
+  user:
+    ttl: 300  # 5 minutes
+    max_entries: 5000
+    eviction_policy: lru
+    namespace: "inknowing:user"
+
+  # Book data cache
+  book:
+    ttl: 3600  # 1 hour
+    max_entries: 1000
+    eviction_policy: lfu
+    namespace: "inknowing:book"
+
+  # Dialogue context cache
+  dialogue:
+    ttl: 7200  # 2 hours
+    max_entries: 5000
+    eviction_policy: lru
+    namespace: "inknowing:dialogue"
+
+  # API rate limiting
+  rate_limit:
+    ttl: 60  # 1 minute sliding window
+    namespace: "inknowing:ratelimit"
+
+  # Verification codes
+  verification:
+    ttl: 300  # 5 minutes
+    namespace: "inknowing:verify"
+
+# Queue configuration (for background jobs)
+queues:
+  default:
+    namespace: "inknowing:queue:default"
+    concurrency: 5
+
+  upload_processing:
+    namespace: "inknowing:queue:upload"
+    concurrency: 3
+    priority: high
+
+  email:
+    namespace: "inknowing:queue:email"
+    concurrency: 10
+    priority: low
+
+  payment:
+    namespace: "inknowing:queue:payment"
+    concurrency: 2
+    priority: critical
+
+# WebSocket support (for real-time features)
+websocket:
+  enabled: true
+  namespace: "inknowing:ws"
+  adapter: redis
+  channel_prefix: "inknowing_channel"
+
+  # Presence tracking
+  presence:
+    enabled: true
+    ttl: 30  # seconds
+    namespace: "inknowing:presence"
+
+# Monitoring and metrics
+monitoring:
+  enabled: true
+  metrics_enabled: true
+  slow_log_enabled: true
+  slow_log_threshold: 10  # milliseconds
+
+  # Commands to monitor
+  monitored_commands:
+    - GET
+    - SET
+    - HGET
+    - HSET
+    - ZADD
+    - ZRANGE
+    - LPUSH
+    - RPOP
+
+# Data persistence (Redis configuration)
+persistence:
+  # RDB snapshots
+  rdb:
+    enabled: true
+    save_points:
+      - "900 1"     # Save after 900 sec if at least 1 key changed
+      - "300 10"    # Save after 300 sec if at least 10 keys changed
+      - "60 10000"  # Save after 60 sec if at least 10000 keys changed
+
+  # AOF (Append Only File)
+  aof:
+    enabled: true
+    fsync: everysec  # always, everysec, no
+    rewrite_incremental_fsync: true
+
+# Memory management
+memory:
+  maxmemory: "2gb"
+  maxmemory_policy: "allkeys-lru"  # noeviction, allkeys-lru, volatile-lru, etc.
+
+  # Memory optimization
+  compression: true
+  lazy_free: true
+  active_defrag: true
+
+# Security settings
+security:
+  require_pass: true
+  protected_mode: true
+  bind: "127.0.0.1 ::1"
+
+  # ACL configuration for Redis 6+
+  acl:
+    enabled: true
+    users:
+      - name: app_user
+        password: "<%= ENV.fetch('REDIS_APP_PASSWORD') %>"
+        permissions: "+@all -flushdb -flushall -config"
+      - name: readonly_user
+        password: "<%= ENV.fetch('REDIS_READONLY_PASSWORD') %>"
+        permissions: "+@read"

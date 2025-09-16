@@ -1,0 +1,2946 @@
+openapi: 3.0.3
+info:
+  title: InKnowing API
+  description: |
+    InKnowing is an AI-powered book dialogue platform that enables users to have conversations with books and book characters.
+
+    ## Business Logic Conservation
+    Based on the principle of business logic conservation, this API documentation maintains complete mapping between:
+    - User Journey → API Endpoints
+    - State Transitions → API Operations
+    - Sequence Interactions → API Calls
+    - Business Rules → API Responses
+
+    ## Key Features
+    - Question-driven and book-driven discovery
+    - AI-powered dialogues with books and characters
+    - User book upload with vectorization
+    - Multi-tier membership system
+    - Admin management dashboard
+
+    ## Authentication
+    The API uses JWT Bearer tokens for authentication. Tokens are obtained through the login endpoints and must be included in the Authorization header for protected endpoints.
+
+    ## Rate Limiting
+    - Free users: 20 requests per day
+    - Basic members: 200 requests per month
+    - Premium members: 500 requests per month
+    - Super members: 1000 requests per month
+  version: 1.0.0
+  contact:
+    name: InKnowing Support
+    email: support@inknowing.ai
+    url: https://inknowing.ai/support
+  license:
+    name: Proprietary
+    url: https://inknowing.ai/terms
+
+servers:
+  - url: https://api.inknowing.ai/v1
+    description: Production server
+  - url: https://staging-api.inknowing.ai/v1
+    description: Staging server
+  - url: http://localhost:8000/v1
+    description: Development server
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Users
+    description: User profile and membership management
+  - name: Books
+    description: Book discovery and management
+  - name: Dialogues
+    description: Chat interactions with books and characters
+  - name: Uploads
+    description: User book upload functionality
+  - name: Admin
+    description: Administrative operations
+  - name: Search
+    description: Search operations for books and questions
+
+paths:
+  # ==================== Authentication ====================
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      description: |
+        Register a new user account with phone number or WeChat
+        Business Logic: User Journey Start → Registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/PhoneRegistration'
+                - $ref: '#/components/schemas/WeChatRegistration'
+            examples:
+              phone:
+                value:
+                  type: phone
+                  phone: "13800138000"
+                  code: "123456"
+              wechat:
+                value:
+                  type: wechat
+                  code: "wx_auth_code_123"
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: |
+        Login with phone/password or WeChat authorization
+        Business Logic: User Authentication State Transition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/PhoneLogin'
+                - $ref: '#/components/schemas/WeChatLogin'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Exchange refresh token for new access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: User logout
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/verify-code:
+    post:
+      tags:
+        - Authentication
+      summary: Send verification code
+      description: Send SMS verification code for phone registration/login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+              properties:
+                phone:
+                  type: string
+                  pattern: '^1[3-9]\d{9}$'
+      responses:
+        '200':
+          description: Code sent successfully
+        '429':
+          description: Too many requests
+
+  # ==================== Users ====================
+  /users/profile:
+    get:
+      tags:
+        - Users
+      summary: Get user profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    patch:
+      tags:
+        - Users
+      summary: Update user profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/membership:
+    get:
+      tags:
+        - Users
+      summary: Get membership status
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Membership information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Membership'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/membership/upgrade:
+    post:
+      tags:
+        - Users
+      summary: Upgrade membership
+      description: |
+        Upgrade to a paid membership plan
+        Business Logic: Free User → Paid Member State Transition
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MembershipUpgrade'
+      responses:
+        '200':
+          description: Upgrade initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentOrder'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/quota:
+    get:
+      tags:
+        - Users
+      summary: Get dialogue quota
+      description: Get remaining dialogue quota for current period
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Quota information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quota'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== Search ====================
+  /search:
+    get:
+      tags:
+        - Search
+      summary: Search books by question or query
+      description: |
+        Search for books that can answer a question or match a query
+        Business Logic: Question → Book Discovery
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query or question
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+        - name: type
+          in: query
+          description: Search type
+          schema:
+            type: string
+            enum: [question, title, author]
+            default: question
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResults'
+
+  /search/books:
+    get:
+      tags:
+        - Search
+      summary: Search books by title
+      description: Direct book title search
+      parameters:
+        - name: title
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: exact
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Book search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookList'
+
+  # ==================== Books ====================
+  /books:
+    get:
+      tags:
+        - Books
+      summary: List books
+      description: Get paginated list of available books
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [business, psychology, fiction, science, history, philosophy]
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [popular, newest, most_discussed]
+            default: popular
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Book list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookList'
+
+  /books/popular:
+    get:
+      tags:
+        - Books
+      summary: Get popular books
+      description: Get list of most popular books based on dialogue count
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month, all]
+            default: week
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 10
+      responses:
+        '200':
+          description: Popular books
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookList'
+
+  /books/{bookId}:
+    get:
+      tags:
+        - Books
+      summary: Get book details
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Book details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /books/{bookId}/characters:
+    get:
+      tags:
+        - Books
+      summary: Get book characters
+      description: Get list of available dialogue characters for a book
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Character list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  characters:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Character'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== Dialogues ====================
+  /dialogues/book/start:
+    post:
+      tags:
+        - Dialogues
+      summary: Start book dialogue
+      description: |
+        Initialize a dialogue session with a book
+        Business Logic: User Action → System Response Sequence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - book_id
+              properties:
+                book_id:
+                  type: string
+                initial_question:
+                  type: string
+      responses:
+        '201':
+          description: Dialogue started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialogueSession'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Quota exceeded
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /dialogues/character/start:
+    post:
+      tags:
+        - Dialogues
+      summary: Start character dialogue
+      description: |
+        Initialize a dialogue session with a book character
+        Business Logic: Character Selection → Immersive Dialogue State
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - book_id
+                - character_id
+              properties:
+                book_id:
+                  type: string
+                character_id:
+                  type: string
+                initial_message:
+                  type: string
+      responses:
+        '201':
+          description: Character dialogue started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialogueSession'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Quota exceeded
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /dialogues/{sessionId}/messages:
+    post:
+      tags:
+        - Dialogues
+      summary: Send message
+      description: Send a message in an active dialogue session
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+      responses:
+        '200':
+          description: Message sent and response received
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialogueMessage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Quota exceeded
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    get:
+      tags:
+        - Dialogues
+      summary: Get dialogue history
+      description: Get message history for a dialogue session
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Message history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DialogueMessage'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /dialogues/{sessionId}/context:
+    get:
+      tags:
+        - Dialogues
+      summary: Get dialogue context
+      description: Get current context and references for dialogue session
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dialogue context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialogueContext'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /dialogues/history:
+    get:
+      tags:
+        - Dialogues
+      summary: Get user dialogue history
+      description: Get all dialogue sessions for current user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: book_id
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [book, character]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Dialogue history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DialogueSession'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== Uploads ====================
+  /uploads/check:
+    post:
+      tags:
+        - Uploads
+      summary: Check if book exists
+      description: Check if a book already exists before upload
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+              properties:
+                title:
+                  type: string
+                author:
+                  type: string
+      responses:
+        '200':
+          description: Check result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exists:
+                    type: boolean
+                  book_id:
+                    type: string
+                    nullable: true
+                  ai_known:
+                    type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /uploads:
+    post:
+      tags:
+        - Uploads
+      summary: Upload book
+      description: |
+        Upload a book file for processing
+        Business Logic: User Upload → AI Processing → Vectorization
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - title
+                - author
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Book file (TXT or PDF, max 10MB)
+                title:
+                  type: string
+                author:
+                  type: string
+                category:
+                  type: string
+                  enum: [business, psychology, fiction, science, history, philosophy]
+                description:
+                  type: string
+                  maxLength: 200
+      responses:
+        '202':
+          description: Upload accepted for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Upload'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: File too large
+
+  /uploads/{uploadId}:
+    get:
+      tags:
+        - Uploads
+      summary: Get upload status
+      description: Get processing status of uploaded book
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: uploadId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Upload status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Upload'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /uploads/my:
+    get:
+      tags:
+        - Uploads
+      summary: Get user uploads
+      description: Get list of books uploaded by current user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, processing, completed, failed, all]
+            default: all
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: User uploads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  uploads:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Upload'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== Admin ====================
+  /admin/login:
+    post:
+      tags:
+        - Admin
+      summary: Admin login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Admin login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/dashboard:
+    get:
+      tags:
+        - Admin
+      summary: Get dashboard statistics
+      security:
+        - adminAuth: []
+      responses:
+        '200':
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/books:
+    get:
+      tags:
+        - Admin
+      summary: List all books (admin)
+      security:
+        - adminAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [published, draft, review, all]
+            default: all
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [ai_known, vectorized, all]
+            default: all
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Book list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  books:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminBook'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Admin
+      summary: Create book (admin)
+      description: |
+        Create a new book entry
+        Business Logic: Admin Creates Book → AI Detection → Auto Character Extraction
+      security:
+        - adminAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookCreate'
+      responses:
+        '201':
+          description: Book created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminBook'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/books/{bookId}:
+    get:
+      tags:
+        - Admin
+      summary: Get book details (admin)
+      security:
+        - adminAuth: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Book details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminBook'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Admin
+      summary: Update book (admin)
+      security:
+        - adminAuth: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookUpdate'
+      responses:
+        '200':
+          description: Book updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminBook'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Admin
+      summary: Delete book (admin)
+      security:
+        - adminAuth: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Book deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/books/{bookId}/characters:
+    get:
+      tags:
+        - Admin
+      summary: Manage book characters (admin)
+      security:
+        - adminAuth: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Character list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  characters:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminCharacter'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      tags:
+        - Admin
+      summary: Add character (admin)
+      security:
+        - adminAuth: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CharacterCreate'
+      responses:
+        '201':
+          description: Character created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCharacter'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/books/{bookId}/characters/{characterId}:
+    put:
+      tags:
+        - Admin
+      summary: Update character (admin)
+      security:
+        - adminAuth: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: characterId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CharacterUpdate'
+      responses:
+        '200':
+          description: Character updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCharacter'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Admin
+      summary: Delete character (admin)
+      security:
+        - adminAuth: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: characterId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Character deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/books/{bookId}/review:
+    post:
+      tags:
+        - Admin
+      summary: Review uploaded book
+      description: |
+        Review and approve/reject user uploaded book
+        Business Logic: Upload Review → Vectorization Decision
+      security:
+        - adminAuth: []
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - action
+              properties:
+                action:
+                  type: string
+                  enum: [approve, reject, request_changes]
+                reason:
+                  type: string
+                  description: Required for reject/request_changes
+                vectorize:
+                  type: boolean
+                  default: true
+                  description: Whether to vectorize (for non-AI-known books)
+      responses:
+        '200':
+          description: Review completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminBook'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/books/ai-check:
+    post:
+      tags:
+        - Admin
+      summary: Check if AI knows book
+      description: Check if configured AI model has knowledge of a book
+      security:
+        - adminAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - author
+              properties:
+                title:
+                  type: string
+                author:
+                  type: string
+      responses:
+        '200':
+          description: AI check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AICheckResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/models:
+    get:
+      tags:
+        - Admin
+      summary: Get AI model configuration
+      security:
+        - adminAuth: []
+      responses:
+        '200':
+          description: Model configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelConfig'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    put:
+      tags:
+        - Admin
+      summary: Update AI model configuration
+      security:
+        - adminAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelConfigUpdate'
+      responses:
+        '200':
+          description: Configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelConfig'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/models/test:
+    post:
+      tags:
+        - Admin
+      summary: Test AI model connection
+      security:
+        - adminAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelTestRequest'
+      responses:
+        '200':
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelTestResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/users:
+    get:
+      tags:
+        - Admin
+      summary: List users (admin)
+      security:
+        - adminAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: membership
+          in: query
+          schema:
+            type: string
+            enum: [free, basic, premium, super]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, suspended, all]
+            default: all
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminUser'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/users/{userId}:
+    get:
+      tags:
+        - Admin
+      summary: Get user details (admin)
+      security:
+        - adminAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags:
+        - Admin
+      summary: Update user (admin)
+      security:
+        - adminAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [active, suspended]
+                membership:
+                  type: string
+                  enum: [free, basic, premium, super]
+                quota_override:
+                  type: integer
+                  minimum: 0
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/statistics/costs:
+    get:
+      tags:
+        - Admin
+      summary: Get cost statistics
+      security:
+        - adminAuth: []
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month, year]
+            default: month
+        - name: group_by
+          in: query
+          schema:
+            type: string
+            enum: [model, feature, user_tier]
+            default: model
+      responses:
+        '200':
+          description: Cost statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostStatistics'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/statistics/dialogues:
+    get:
+      tags:
+        - Admin
+      summary: Get dialogue statistics
+      security:
+        - adminAuth: []
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month, year]
+            default: month
+        - name: group_by
+          in: query
+          schema:
+            type: string
+            enum: [book, user, model, type]
+            default: book
+      responses:
+        '200':
+          description: Dialogue statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialogueStatistics'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/monitoring/alerts:
+    get:
+      tags:
+        - Admin
+      summary: Get system alerts
+      security:
+        - adminAuth: []
+      parameters:
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [info, warning, error, critical]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, resolved, all]
+            default: active
+      responses:
+        '200':
+          description: System alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alerts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SystemAlert'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  # ==================== WebSocket ====================
+  /ws/dialogue/{sessionId}:
+    get:
+      tags:
+        - Dialogues
+      summary: WebSocket connection for real-time dialogue
+      description: |
+        Establish WebSocket connection for real-time dialogue communication.
+
+        ## Message Format
+
+        ### Client to Server:
+        ```json
+        {
+          "type": "message",
+          "content": "User message text"
+        }
+        ```
+
+        ### Server to Client:
+        ```json
+        {
+          "type": "response",
+          "content": "AI response text",
+          "references": [...],
+          "timestamp": "2024-01-20T10:30:00Z"
+        }
+        ```
+
+        ```json
+        {
+          "type": "typing",
+          "isTyping": true
+        }
+        ```
+
+        ```json
+        {
+          "type": "error",
+          "message": "Error description"
+        }
+        ```
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: token
+          in: query
+          required: true
+          description: JWT authentication token
+          schema:
+            type: string
+      responses:
+        '101':
+          description: Switching Protocols - WebSocket connection established
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== Payment ====================
+  /payment/callback/wechat:
+    post:
+      tags:
+        - Payment
+      summary: WeChat payment callback
+      description: Webhook endpoint for WeChat payment notifications
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Callback processed
+
+  /payment/callback/alipay:
+    post:
+      tags:
+        - Payment
+      summary: Alipay payment callback
+      description: Webhook endpoint for Alipay payment notifications
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Callback processed
+
+  /payment/orders/{orderId}:
+    get:
+      tags:
+        - Payment
+      summary: Get payment order status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentOrder'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    # ==================== User & Auth Schemas ====================
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        wechat_openid:
+          type: string
+          nullable: true
+        avatar:
+          type: string
+          nullable: true
+        nickname:
+          type: string
+        membership:
+          $ref: '#/components/schemas/MembershipType'
+        points:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AdminUser:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            email:
+              type: string
+            status:
+              type: string
+              enum: [active, suspended]
+            total_dialogues:
+              type: integer
+            total_uploads:
+              type: integer
+            last_active:
+              type: string
+              format: date-time
+            quota_used:
+              type: integer
+            quota_limit:
+              type: integer
+
+    UserUpdate:
+      type: object
+      properties:
+        nickname:
+          type: string
+        avatar:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+          default: Bearer
+        expires_in:
+          type: integer
+          description: Token expiry time in seconds
+        user:
+          $ref: '#/components/schemas/User'
+
+    AdminAuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          default: Bearer
+        expires_in:
+          type: integer
+        admin:
+          type: object
+          properties:
+            id:
+              type: string
+            username:
+              type: string
+            role:
+              type: string
+              enum: [super_admin, admin, moderator]
+            permissions:
+              type: array
+              items:
+                type: string
+
+    PhoneRegistration:
+      type: object
+      required:
+        - type
+        - phone
+        - code
+      properties:
+        type:
+          type: string
+          enum: [phone]
+        phone:
+          type: string
+          pattern: '^1[3-9]\d{9}$'
+        code:
+          type: string
+          pattern: '^\d{6}$'
+        password:
+          type: string
+          minLength: 6
+
+    WeChatRegistration:
+      type: object
+      required:
+        - type
+        - code
+      properties:
+        type:
+          type: string
+          enum: [wechat]
+        code:
+          type: string
+          description: WeChat authorization code
+
+    PhoneLogin:
+      type: object
+      required:
+        - type
+        - phone
+      properties:
+        type:
+          type: string
+          enum: [phone]
+        phone:
+          type: string
+          pattern: '^1[3-9]\d{9}$'
+        password:
+          type: string
+          minLength: 6
+        code:
+          type: string
+          pattern: '^\d{6}$'
+          description: SMS code for code-based login
+
+    WeChatLogin:
+      type: object
+      required:
+        - type
+        - code
+      properties:
+        type:
+          type: string
+          enum: [wechat]
+        code:
+          type: string
+          description: WeChat authorization code
+
+    # ==================== Membership Schemas ====================
+    MembershipType:
+      type: string
+      enum: [free, basic, premium, super]
+
+    Membership:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/MembershipType'
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        quota_total:
+          type: integer
+          description: Total quota for current period
+        quota_used:
+          type: integer
+          description: Used quota in current period
+        quota_reset_at:
+          type: string
+          format: date-time
+          description: When quota resets
+        benefits:
+          type: array
+          items:
+            type: string
+
+    MembershipUpgrade:
+      type: object
+      required:
+        - plan
+        - payment_method
+      properties:
+        plan:
+          type: string
+          enum: [basic, premium, super]
+        duration:
+          type: integer
+          enum: [1, 3, 6, 12]
+          default: 1
+          description: Duration in months
+        payment_method:
+          type: string
+          enum: [wechat, alipay]
+
+    Quota:
+      type: object
+      properties:
+        total:
+          type: integer
+        used:
+          type: integer
+        remaining:
+          type: integer
+        reset_at:
+          type: string
+          format: date-time
+
+    # ==================== Book Schemas ====================
+    Book:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        author:
+          type: string
+        cover:
+          type: string
+          nullable: true
+        category:
+          type: string
+        description:
+          type: string
+        dialogue_count:
+          type: integer
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+        created_at:
+          type: string
+          format: date-time
+
+    BookDetail:
+      allOf:
+        - $ref: '#/components/schemas/Book'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum: [ai_known, vectorized]
+            chapters:
+              type: integer
+            estimated_reading_time:
+              type: integer
+              description: Estimated reading time in minutes
+            characters:
+              type: array
+              items:
+                $ref: '#/components/schemas/Character'
+            tags:
+              type: array
+              items:
+                type: string
+            uploader:
+              type: object
+              nullable: true
+              properties:
+                id:
+                  type: string
+                nickname:
+                  type: string
+
+    AdminBook:
+      allOf:
+        - $ref: '#/components/schemas/BookDetail'
+        - type: object
+          properties:
+            status:
+              type: string
+              enum: [published, draft, review, offline]
+            source:
+              type: string
+              enum: [admin, user_upload]
+            vector_status:
+              type: string
+              enum: [not_needed, pending, processing, completed, failed]
+            vector_count:
+              type: integer
+            ai_model_tested:
+              type: string
+            review_status:
+              type: string
+              enum: [pending, approved, rejected, changes_requested]
+            reviewer_id:
+              type: string
+              nullable: true
+            review_notes:
+              type: string
+              nullable: true
+            total_api_cost:
+              type: number
+              format: float
+            updated_at:
+              type: string
+              format: date-time
+
+    BookCreate:
+      type: object
+      required:
+        - title
+        - author
+        - type
+      properties:
+        title:
+          type: string
+        author:
+          type: string
+        type:
+          type: string
+          enum: [ai_known, needs_upload]
+        category:
+          type: string
+        description:
+          type: string
+        cover_url:
+          type: string
+        isbn:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    BookUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        author:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        cover_url:
+          type: string
+        status:
+          type: string
+          enum: [published, draft, offline]
+        tags:
+          type: array
+          items:
+            type: string
+
+    BookList:
+      type: object
+      properties:
+        books:
+          type: array
+          items:
+            $ref: '#/components/schemas/Book'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    SearchResults:
+      type: object
+      properties:
+        query:
+          type: string
+        type:
+          type: string
+          enum: [question, title, author]
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              book:
+                $ref: '#/components/schemas/Book'
+              relevance_score:
+                type: number
+                minimum: 0
+                maximum: 100
+              matched_chapters:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    chapter_number:
+                      type: integer
+                    chapter_title:
+                      type: string
+                    preview:
+                      type: string
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    # ==================== Character Schemas ====================
+    Character:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        alias:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        personality:
+          type: string
+        dialogue_count:
+          type: integer
+        enabled:
+          type: boolean
+
+    AdminCharacter:
+      allOf:
+        - $ref: '#/components/schemas/Character'
+        - type: object
+          properties:
+            personality_prompt:
+              type: string
+              description: System prompt for character personality
+            dialogue_style:
+              type: object
+              properties:
+                language_style:
+                  type: string
+                  enum: [elegant, poetic, modern, casual]
+                emotional_tone:
+                  type: string
+                  enum: [melancholic, cheerful, serious, rebellious]
+                knowledge_scope:
+                  type: string
+                  enum: [book_only, extended]
+            key_memories:
+              type: array
+              items:
+                type: string
+            example_dialogues:
+              type: array
+              items:
+                type: object
+                properties:
+                  user_input:
+                    type: string
+                  character_response:
+                    type: string
+            created_by:
+              type: string
+              enum: [ai_extracted, admin_created]
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    CharacterCreate:
+      type: object
+      required:
+        - name
+        - description
+      properties:
+        name:
+          type: string
+        alias:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        personality:
+          type: string
+        personality_prompt:
+          type: string
+        dialogue_style:
+          type: object
+          properties:
+            language_style:
+              type: string
+              enum: [elegant, poetic, modern, casual]
+            emotional_tone:
+              type: string
+              enum: [melancholic, cheerful, serious, rebellious]
+            knowledge_scope:
+              type: string
+              enum: [book_only, extended]
+        key_memories:
+          type: array
+          items:
+            type: string
+        example_dialogues:
+          type: array
+          items:
+            type: object
+            properties:
+              user_input:
+                type: string
+              character_response:
+                type: string
+        enabled:
+          type: boolean
+          default: true
+
+    CharacterUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        alias:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        personality:
+          type: string
+        personality_prompt:
+          type: string
+        dialogue_style:
+          type: object
+          properties:
+            language_style:
+              type: string
+              enum: [elegant, poetic, modern, casual]
+            emotional_tone:
+              type: string
+              enum: [melancholic, cheerful, serious, rebellious]
+            knowledge_scope:
+              type: string
+              enum: [book_only, extended]
+        key_memories:
+          type: array
+          items:
+            type: string
+        example_dialogues:
+          type: array
+          items:
+            type: object
+            properties:
+              user_input:
+                type: string
+              character_response:
+                type: string
+        enabled:
+          type: boolean
+
+    # ==================== Dialogue Schemas ====================
+    DialogueSession:
+      type: object
+      properties:
+        id:
+          type: string
+        book_id:
+          type: string
+        book_title:
+          type: string
+        type:
+          type: string
+          enum: [book, character]
+        character_id:
+          type: string
+          nullable: true
+        character_name:
+          type: string
+          nullable: true
+        user_id:
+          type: string
+        message_count:
+          type: integer
+        last_message_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, ended]
+
+    DialogueMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        session_id:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+        references:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reference'
+        timestamp:
+          type: string
+          format: date-time
+        tokens_used:
+          type: integer
+        model_used:
+          type: string
+
+    DialogueContext:
+      type: object
+      properties:
+        session_id:
+          type: string
+        book_context:
+          type: object
+          properties:
+            current_chapter:
+              type: string
+              nullable: true
+            discussed_topics:
+              type: array
+              items:
+                type: string
+            key_references:
+              type: array
+              items:
+                $ref: '#/components/schemas/Reference'
+        character_context:
+          type: object
+          nullable: true
+          properties:
+            character_state:
+              type: string
+            emotional_tone:
+              type: string
+            remembered_facts:
+              type: array
+              items:
+                type: string
+
+    Reference:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [chapter, page, paragraph, character_memory]
+        chapter:
+          type: integer
+          nullable: true
+        page:
+          type: integer
+          nullable: true
+        text:
+          type: string
+        highlight:
+          type: string
+
+    # ==================== Upload Schemas ====================
+    Upload:
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        book_id:
+          type: string
+          nullable: true
+          description: Book ID once processing is complete
+        filename:
+          type: string
+        file_size:
+          type: integer
+        file_type:
+          type: string
+          enum: [txt, pdf]
+        title:
+          type: string
+        author:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        processing_steps:
+          type: array
+          items:
+            type: object
+            properties:
+              step:
+                type: string
+                enum: [
+                  ai_detection,
+                  text_preprocessing,
+                  chapter_extraction,
+                  character_extraction,
+                  vectorization,
+                  indexing,
+                  model_generation
+                ]
+              status:
+                type: string
+                enum: [pending, processing, completed, failed]
+              progress:
+                type: integer
+                minimum: 0
+                maximum: 100
+              message:
+                type: string
+        ai_known:
+          type: boolean
+          nullable: true
+        vector_count:
+          type: integer
+          nullable: true
+        extracted_characters:
+          type: array
+          items:
+            type: string
+        points_earned:
+          type: integer
+        error_message:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ==================== AI Model Schemas ====================
+    ModelConfig:
+      type: object
+      properties:
+        primary_model:
+          $ref: '#/components/schemas/AIModel'
+        backup_models:
+          type: array
+          items:
+            $ref: '#/components/schemas/AIModel'
+        routing_rules:
+          type: object
+          properties:
+            scenario_routing:
+              type: object
+              properties:
+                normal_dialogue:
+                  type: string
+                character_roleplay:
+                  type: string
+            user_tier_routing:
+              type: object
+              properties:
+                free:
+                  type: string
+                paid:
+                  type: string
+        embedding_model:
+          type: object
+          properties:
+            provider:
+              type: string
+            model:
+              type: string
+            dimension:
+              type: integer
+
+    AIModel:
+      type: object
+      properties:
+        id:
+          type: string
+        provider:
+          type: string
+          enum: [openai, anthropic, qwen, baidu, zhipu]
+        model:
+          type: string
+        api_endpoint:
+          type: string
+        api_key_configured:
+          type: boolean
+        parameters:
+          type: object
+          properties:
+            temperature:
+              type: number
+              minimum: 0
+              maximum: 2
+            max_tokens:
+              type: integer
+            top_p:
+              type: number
+        monthly_cost:
+          type: number
+        status:
+          type: string
+          enum: [active, inactive, error]
+        last_health_check:
+          type: string
+          format: date-time
+        average_latency:
+          type: number
+          description: Average response time in milliseconds
+
+    ModelConfigUpdate:
+      type: object
+      properties:
+        primary_model_id:
+          type: string
+        backup_model_ids:
+          type: array
+          items:
+            type: string
+        routing_rules:
+          type: object
+        new_model:
+          type: object
+          properties:
+            provider:
+              type: string
+            model:
+              type: string
+            api_endpoint:
+              type: string
+            api_key:
+              type: string
+            parameters:
+              type: object
+
+    ModelTestRequest:
+      type: object
+      required:
+        - provider
+        - model
+        - api_endpoint
+        - api_key
+      properties:
+        provider:
+          type: string
+        model:
+          type: string
+        api_endpoint:
+          type: string
+        api_key:
+          type: string
+        test_prompt:
+          type: string
+          default: "Hello, can you introduce yourself?"
+
+    ModelTestResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        latency:
+          type: number
+          description: Response time in milliseconds
+        response:
+          type: string
+        error:
+          type: string
+          nullable: true
+        estimated_cost:
+          type: number
+
+    AICheckResult:
+      type: object
+      properties:
+        ai_knows_book:
+          type: boolean
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 100
+        detected_content:
+          type: object
+          properties:
+            chapters:
+              type: array
+              items:
+                type: string
+            main_themes:
+              type: array
+              items:
+                type: string
+            characters:
+              type: array
+              items:
+                type: string
+        recommendation:
+          type: string
+          enum: [use_ai_directly, needs_vectorization, manual_review_needed]
+
+    # ==================== Admin Statistics Schemas ====================
+    DashboardStats:
+      type: object
+      properties:
+        real_time:
+          type: object
+          properties:
+            online_users:
+              type: integer
+            active_dialogues:
+              type: integer
+            api_health:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, down]
+                  latency:
+                    type: number
+        today:
+          type: object
+          properties:
+            new_users:
+              type: integer
+            total_dialogues:
+              type: integer
+            new_books:
+              type: integer
+            api_cost:
+              type: number
+            revenue:
+              type: number
+        trending:
+          type: object
+          properties:
+            top_books:
+              type: array
+              items:
+                type: object
+                properties:
+                  book_id:
+                    type: string
+                  title:
+                    type: string
+                  dialogue_count:
+                    type: integer
+            top_questions:
+              type: array
+              items:
+                type: object
+                properties:
+                  question:
+                    type: string
+                  count:
+                    type: integer
+
+    CostStatistics:
+      type: object
+      properties:
+        period:
+          type: string
+        total_cost:
+          type: number
+        breakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              cost:
+                type: number
+              percentage:
+                type: number
+              count:
+                type: integer
+        trend:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              cost:
+                type: number
+        projection:
+          type: object
+          properties:
+            estimated_monthly:
+              type: number
+            budget_status:
+              type: string
+              enum: [under_budget, on_track, over_budget]
+
+    DialogueStatistics:
+      type: object
+      properties:
+        period:
+          type: string
+        total_dialogues:
+          type: integer
+        unique_users:
+          type: integer
+        breakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              count:
+                type: integer
+              average_messages:
+                type: integer
+              average_duration:
+                type: integer
+                description: Average session duration in seconds
+        satisfaction:
+          type: object
+          properties:
+            average_rating:
+              type: number
+            feedback_count:
+              type: integer
+
+    SystemAlert:
+      type: object
+      properties:
+        id:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, error, critical]
+        type:
+          type: string
+          enum: [api_failure, high_cost, user_issue, system_performance]
+        message:
+          type: string
+        details:
+          type: object
+        status:
+          type: string
+          enum: [active, acknowledged, resolved]
+        created_at:
+          type: string
+          format: date-time
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ==================== Payment Schemas ====================
+    PaymentOrder:
+      type: object
+      properties:
+        order_id:
+          type: string
+        user_id:
+          type: string
+        type:
+          type: string
+          enum: [membership, points]
+        amount:
+          type: number
+        currency:
+          type: string
+          default: CNY
+        status:
+          type: string
+          enum: [pending, processing, completed, failed, refunded]
+        payment_method:
+          type: string
+          enum: [wechat, alipay]
+        payment_url:
+          type: string
+          description: URL or QR code for payment
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ==================== Common Schemas ====================
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+        has_next:
+          type: boolean
+        has_prev:
+          type: boolean
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for user authentication
+
+    adminAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for admin authentication
+
+# API Response Standards
+x-response-standards:
+  success:
+    description: |
+      All successful responses follow this structure:
+      - 200 OK: Successful GET, PUT
+      - 201 Created: Successful POST creating new resource
+      - 202 Accepted: Request accepted for async processing
+      - 204 No Content: Successful DELETE
+    format:
+      data: "Response payload"
+      meta: "Optional metadata (pagination, etc)"
+
+  error:
+    description: |
+      All error responses follow RFC 7807 (Problem Details)
+    format:
+      error: "Error code"
+      message: "Human-readable message"
+      details: "Additional context"
+      timestamp: "ISO 8601 timestamp"
+
+# Rate Limiting Headers
+x-rate-limit-headers:
+  X-RateLimit-Limit: "Request limit per period"
+  X-RateLimit-Remaining: "Remaining requests"
+  X-RateLimit-Reset: "Unix timestamp when limit resets"
+
+# Business Logic Mapping
+x-business-logic-conservation:
+  principle: |
+    This API specification maintains complete business logic conservation where:
+    - Every user journey step maps to specific API endpoints
+    - State transitions are reflected in API operations
+    - Sequence diagrams translate to API call chains
+    - Business rules are enforced through API responses
+
+  mappings:
+    user_journey_to_api:
+      - "Discovery → GET /search, GET /books"
+      - "Registration → POST /auth/register"
+      - "Login → POST /auth/login"
+      - "Start Dialogue → POST /dialogues/book/start"
+      - "Send Message → POST /dialogues/{id}/messages"
+      - "Upgrade → POST /users/membership/upgrade"
+      - "Upload Book → POST /uploads"
+
+    state_transitions:
+      - "Anonymous → Authenticated: POST /auth/login"
+      - "Free → Paid: POST /users/membership/upgrade"
+      - "No Dialogue → Active Dialogue: POST /dialogues/*/start"
+      - "Processing → Completed: GET /uploads/{id} (status change)"
+
+    sequence_flows:
+      - "Question Search Flow: /search → /books/{id} → /dialogues/book/start → /dialogues/{id}/messages"
+      - "Upload Flow: /uploads/check → /uploads → /uploads/{id} (polling)"
+      - "Payment Flow: /users/membership/upgrade → /payment/callback/* → /users/membership"
