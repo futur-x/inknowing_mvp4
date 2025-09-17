@@ -51,7 +51,7 @@ import { toast } from 'sonner';
 import { BookManagementItem } from '@/types/upload';
 import { formatFileSize } from '@/lib/upload-utils';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888/v1';
 
 interface BookManagerProps {
   userId?: string;

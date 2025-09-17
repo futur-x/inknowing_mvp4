@@ -23,7 +23,7 @@ import {
   clearUploadState,
 } from '@/lib/upload-utils';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888/v1';
 
 interface UseUploadOptions {
   onSuccess?: (upload: Upload) => void;

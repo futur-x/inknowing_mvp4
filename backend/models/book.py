@@ -85,7 +85,7 @@ class Book(Base):
     word_count = Column(Integer)
     chapters = Column(Integer)
     estimated_reading_time = Column(Integer)
-    difficulty_level = Column(String(20))
+    # difficulty_level = Column(String(20))  # TODO: Add this column to database
 
     # Upload related
     uploader_id = Column(PostgresUUID(as_uuid=True))

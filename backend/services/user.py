@@ -59,25 +59,35 @@ class UserService:
         """Get user dialogue quota status"""
         user = await self.get_user_profile(user_id)
 
-        # Get or create quota record
-        result = await self.db.execute(
-            select(UserQuota).where(
-                UserQuota.user_id == user_id,
-                UserQuota.quota_type == "dialogue",
-                UserQuota.period_end > datetime.utcnow(),
-            )
-        )
-        quota = result.scalar_one_or_none()
+        # Return mock quota data for now (table doesn't exist yet)
+        # Define quota limits by membership
+        quota_limits = {
+            "free": 20,  # 20 per day
+            "basic": 200,  # 200 per month
+            "premium": 500,  # 500 per month
+            "super": 1000,  # 1000 per month
+        }
 
-        if not quota:
-            # Create new quota period based on membership
-            quota = await self._create_quota_period(user)
+        total_quota = quota_limits.get(user.membership, 20)
+
+        # Calculate reset date
+        if user.membership == "free":
+            # Daily reset for free users
+            tomorrow = datetime.utcnow() + timedelta(days=1)
+            reset_at = tomorrow.replace(hour=0, minute=0, second=0, microsecond=0)
+        else:
+            # Monthly reset for paid users
+            now = datetime.utcnow()
+            if now.month == 12:
+                reset_at = now.replace(year=now.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            else:
+                reset_at = now.replace(month=now.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
 
         return {
-            "total": quota.total_quota,
-            "used": quota.used_quota,
-            "remaining": quota.total_quota - quota.used_quota,
-            "reset_at": quota.period_end,
+            "total": total_quota,
+            "used": 0,  # Mock: no dialogues used yet
+            "remaining": total_quota,
+            "reset_at": reset_at,
         }
 
     async def get_user_membership(self, user_id: UUID) -> Dict[str, Any]:
@@ -216,28 +226,28 @@ class UserService:
 
         return quota
 
-    def _get_membership_benefits(self, membership: MembershipType) -> List[str]:
+    def _get_membership_benefits(self, membership: str) -> List[str]:
         """Get benefits for a membership type"""
         benefits = {
-            MembershipType.FREE: [
+            "free": [
                 "20 dialogues per day",
                 "Access to book dialogues",
                 "Basic search features",
             ],
-            MembershipType.BASIC: [
+            "basic": [
                 "200 dialogues per month",
                 "Access to book and character dialogues",
                 "Advanced search features",
                 "Save dialogue history",
             ],
-            MembershipType.PREMIUM: [
+            "premium": [
                 "500 dialogues per month",
                 "All Basic features",
                 "Upload up to 3 books",
                 "Priority response time",
                 "Export dialogue history",
             ],
-            MembershipType.SUPER: [
+            "super": [
                 "1000 dialogues per month",
                 "All Premium features",
                 "Upload up to 10 books",

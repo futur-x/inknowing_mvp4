@@ -107,8 +107,8 @@ class Upload(Base):
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = relationship("User")
-    book = relationship("Book")
+    user = relationship("User", foreign_keys=[user_id])
+    book = relationship("Book", foreign_keys=[book_id])
 
     def __repr__(self):
         return f"<Upload(id={self.id}, title='{self.title}', status={self.status.value})>"

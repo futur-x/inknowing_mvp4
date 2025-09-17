@@ -25,7 +25,7 @@ import {
   Upload as UploadType,
 } from '@/types/upload';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888/v1';
 
 export default function UploadPage() {
   const router = useRouter();

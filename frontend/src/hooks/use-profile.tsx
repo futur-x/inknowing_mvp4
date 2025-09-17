@@ -84,7 +84,7 @@ export function useProfile() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch('http://localhost:8888/api/users/profile', {
+      const response = await fetch('http://localhost:8888/v1/users/profile', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -118,7 +118,7 @@ export function useProfile() {
 
     setLoading(true)
     try {
-      const response = await fetch('http://localhost:8888/api/users/profile', {
+      const response = await fetch('http://localhost:8888/v1/users/profile', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -169,7 +169,7 @@ export function useProfile() {
 
     setLoading(true)
     try {
-      const response = await fetch('http://localhost:8888/api/users/avatar', {
+      const response = await fetch('http://localhost:8888/v1/users/avatar', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -209,13 +209,13 @@ export function useProfile() {
 
     try {
       const [dialoguesRes, historyRes, statsRes] = await Promise.all([
-        fetch('http://localhost:8888/api/dialogues/history', {
+        fetch('http://localhost:8888/v1/dialogues/history', {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch('http://localhost:8888/api/users/reading-history', {
+        fetch('http://localhost:8888/v1/users/reading-history', {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch('http://localhost:8888/api/users/stats', {
+        fetch('http://localhost:8888/v1/users/stats', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ])
@@ -257,7 +257,7 @@ export function useProfile() {
     }
 
     try {
-      const response = await fetch('http://localhost:8888/api/users/settings', {
+      const response = await fetch('http://localhost:8888/v1/users/settings', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -302,7 +302,7 @@ export function useProfile() {
     }
 
     try {
-      const response = await fetch('http://localhost:8888/api/users/change-password', {
+      const response = await fetch('http://localhost:8888/v1/users/change-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -348,7 +348,7 @@ export function useProfile() {
     }
 
     try {
-      const response = await fetch('http://localhost:8888/api/users/account', {
+      const response = await fetch('http://localhost:8888/v1/users/account', {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

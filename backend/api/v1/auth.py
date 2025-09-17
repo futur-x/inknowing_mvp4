@@ -36,6 +36,27 @@ from schemas.auth import (
 router = APIRouter()
 
 
+async def verify_sms_code(phone: str, code: str) -> bool:
+    """
+    Verify SMS code for phone number
+
+    In test/development mode, accept '123456' as valid code
+    In production, verify against cached/stored code
+    """
+    # Check if we're in test/development mode
+    if settings.ENVIRONMENT in ["development", "test", "testing"]:
+        # Accept fixed test code in test/dev mode
+        if code == "123456":
+            return True
+
+    # TODO: In production, verify against Redis/cache
+    # For now, accept any 6-digit code in development
+    if settings.DEBUG:
+        return len(code) == 6 and code.isdigit()
+
+    return False
+
+
 async def create_auth_response(user: User) -> AuthResponse:
     """Create authentication response with tokens"""
     access_token = create_access_token(data={"sub": str(user.id)})
@@ -73,8 +94,12 @@ async def register(
                 detail="Phone number already registered",
             )
 
-        # TODO: Verify SMS code from cache/database
-        # For now, accept any valid format code
+        # Verify SMS code
+        if not await verify_sms_code(request.phone, request.code):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid verification code",
+            )
 
         # Create new user
         user = User(
@@ -83,8 +108,8 @@ async def register(
             phone=request.phone,
             phone_verified=True,
             nickname=request.nickname or f"User_{request.phone[-4:]}",
-            membership=MembershipType.FREE,
-            status=UserStatus.ACTIVE,
+            membership="free",  # Use string value directly
+            status="active",  # Use string value directly
             password_hash=get_password_hash(request.password) if request.password else None,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
@@ -114,8 +139,8 @@ async def register(
             username=generate_username(wechat_openid=wechat_openid),
             wechat_openid=wechat_openid,
             nickname=request.nickname or f"WeChat_User_{uuid.uuid4().hex[:6]}",
-            membership=MembershipType.FREE,
-            status=UserStatus.ACTIVE,
+            membership="free",  # Use string value directly
+            status="active",  # Use string value directly
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
@@ -158,8 +183,12 @@ async def login(
                     detail="Invalid credentials",
                 )
         elif request.code:
-            # TODO: Verify SMS code from cache/database
-            pass
+            # Verify SMS code
+            if not await verify_sms_code(request.phone, request.code):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid verification code",
+                )
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

@@ -58,13 +58,25 @@ class UserResponse(BaseModel):
     email: Optional[str] = None
     avatar: Optional[str] = None
     nickname: str
-    membership: MembershipType
+    membership: Union[MembershipType, str]  # Accept both enum and string
     membership_expires_at: Optional[datetime] = None
     points: int = 0
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+    @validator("id", pre=True)
+    def validate_id(cls, v):
+        # Convert UUID to string if needed
+        return str(v)
+
+    @validator("membership", pre=True)
+    def validate_membership(cls, v):
+        # Convert string to enum if needed
+        if isinstance(v, str):
+            return MembershipType(v)
+        return v
 
     @validator("phone", always=True)
     def mask_phone(cls, v):

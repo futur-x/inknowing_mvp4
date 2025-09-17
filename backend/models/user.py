@@ -55,8 +55,8 @@ class User(Base):
 
     # Membership fields
     membership = Column(
-        Enum(MembershipType, name="membership_type", create_type=False),
-        default=MembershipType.FREE,
+        Enum(MembershipType, name="membership_type", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        default=MembershipType.FREE.value,
     )
     membership_expires_at = Column(DateTime)
     membership_auto_renew = Column(Boolean, default=False)
@@ -68,8 +68,8 @@ class User(Base):
 
     # Status fields
     status = Column(
-        Enum(UserStatus, name="user_status", create_type=False),
-        default=UserStatus.ACTIVE,
+        Enum(UserStatus, name="user_status", create_type=False, values_callable=lambda x: [e.value for e in x]),
+        default=UserStatus.ACTIVE.value,
     )
     last_login_at = Column(DateTime)
     login_count = Column(Integer, default=0)

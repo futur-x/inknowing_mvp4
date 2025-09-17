@@ -19,7 +19,7 @@ from schemas.user import (
 )
 from services.user import UserService
 
-router = APIRouter(prefix="/users", tags=["Users"])
+router = APIRouter(tags=["Users"])
 
 
 @router.get("/profile", response_model=UserProfile)

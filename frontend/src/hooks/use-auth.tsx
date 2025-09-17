@@ -45,7 +45,7 @@ export function useAuth(requireAuth: boolean = false) {
   const updateProfile = useCallback(async (updates: any) => {
     if (!token) throw new Error('Not authenticated')
 
-    const response = await fetch('http://localhost:8888/api/users/profile', {
+    const response = await fetch('http://localhost:8888/v1/users/profile', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
