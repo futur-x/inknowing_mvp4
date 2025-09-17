@@ -17,20 +17,29 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname()
-  const { isAuthenticated, refreshAuth } = useAuthStore()
+  const { isAuthenticated, refreshAuth, checkAuth, token } = useAuthStore()
   const { fetchMembership, fetchQuota } = useUserStore()
 
-  // Initialize user data when authenticated
+  // Initialize auth state on mount
   useEffect(() => {
-    if (isAuthenticated) {
-      // Refresh token on app load
-      refreshAuth().catch(console.error)
-
-      // Load user membership and quota
+    // Check if we have a stored token and validate it
+    if (token && !isAuthenticated) {
+      checkAuth().catch(console.error)
+    } else if (isAuthenticated) {
+      // Load user membership and quota for authenticated users
       fetchMembership().catch(console.error)
       fetchQuota().catch(console.error)
     }
-  }, [isAuthenticated, refreshAuth, fetchMembership, fetchQuota])
+  }, []) // Run only once on mount
+
+  // Handle auth state changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Load user membership and quota when authentication status changes
+      fetchMembership().catch(console.error)
+      fetchQuota().catch(console.error)
+    }
+  }, [isAuthenticated, fetchMembership, fetchQuota])
 
   // Auto-refresh quota periodically for authenticated users
   useEffect(() => {

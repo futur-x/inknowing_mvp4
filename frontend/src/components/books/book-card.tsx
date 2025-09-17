@@ -45,7 +45,8 @@ const difficultyLabels: Record<BookDifficulty, string> = {
 /**
  * Format large numbers for display
  */
-function formatCount(count: number): string {
+function formatCount(count: number | undefined): string {
+  if (!count || count === 0) return '0';
   if (count >= 10000) {
     return `${(count / 10000).toFixed(1)}万`;
   } else if (count >= 1000) {

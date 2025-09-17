@@ -3,12 +3,12 @@ import type { NextRequest } from 'next/server';
 
 // List of protected routes that require authentication
 const protectedRoutes = [
-  '/books',
   '/profile',
   '/dialogues',
   '/upload',
   '/dashboard',
-  '/settings'
+  '/settings',
+  '/chat'  // Chat requires authentication for quota tracking
 ];
 
 // List of auth routes (login, register, etc.)

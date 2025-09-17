@@ -10,8 +10,8 @@ export class ApiClient {
   private refreshPromise: Promise<void> | null = null
 
   constructor() {
-    // Use proxy path for better compatibility
-    this.baseURL = typeof window !== 'undefined' ? '/api/v1' : (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888/v1')
+    // Use direct backend URL for API calls
+    this.baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888/v1'
     this.timeout = 30000 // 30 seconds
     this.retries = 3
   }

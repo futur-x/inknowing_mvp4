@@ -207,7 +207,7 @@ class BookService:
                 "chapters": book.chapters,
                 "estimated_reading_time": book.estimated_reading_time,
                 "characters": [],  # Will be filled separately
-                "tags": book.tags if hasattr(book, "tags") and book.tags else [],
+                "tags": book.tags if book.tags else [],
                 "uploader": None,  # Will be filled if applicable
             }
         )
