@@ -9,8 +9,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PhoneVerificationInput } from '@/components/auth/phone-input';
-import { VerificationInput } from '@/components/auth/verification-input';
 import { PasswordStrength, PasswordMatchIndicator, validatePasswordStrength } from '@/components/auth/password-strength';
 import { useAuthStore } from '@/stores/auth';
 import { Loader2, Phone, Lock, MessageSquare, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -19,6 +17,7 @@ import { cn } from '@/lib/utils';
 
 interface RegisterFormData {
   phone: string;
+  nickname: string;
   password: string;
   confirmPassword: string;
   verificationCode: string;
@@ -33,6 +32,7 @@ export function RegisterForm() {
   const [currentStep, setCurrentStep] = useState<'info' | 'verify'>('info');
   const [formData, setFormData] = useState<RegisterFormData>({
     phone: '',
+    nickname: '',
     password: '',
     confirmPassword: '',
     verificationCode: '',
@@ -55,6 +55,11 @@ export function RegisterForm() {
       errors.phone = '请输入手机号';
     } else if (!/^1[3-9]\d{9}$/.test(formData.phone)) {
       errors.phone = '请输入有效的手机号';
+    }
+
+    // Validate nickname
+    if (!formData.nickname) {
+      errors.nickname = '请输入昵称';
     }
 
     // Validate password
@@ -114,6 +119,7 @@ export function RegisterForm() {
           type: 'phone',
           phone: formData.phone,
           code: formData.verificationCode,
+          nickname: formData.nickname,
           password: formData.password
         });
 
@@ -181,16 +187,45 @@ export function RegisterForm() {
           <TabsContent value="phone" className="space-y-4 mt-4">
             {currentStep === 'info' ? (
               <>
-                {/* Phone Input with Verification */}
+                {/* Phone Input */}
                 <div className="space-y-2">
                   <Label htmlFor="phone">手机号</Label>
-                  <PhoneVerificationInput
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
                     value={formData.phone}
-                    onChange={handleInputChange('phone')}
-                    onSendCode={handleSendVerificationCode}
-                    error={validationErrors.phone}
+                    onChange={(e) => handleInputChange('phone')(e.target.value)}
                     disabled={isLoading}
+                    placeholder="请输入手机号"
+                    maxLength={11}
+                    className={cn(
+                      validationErrors.phone && "border-red-500 focus:border-red-500"
+                    )}
                   />
+                  {validationErrors.phone && (
+                    <p className="text-sm text-red-600">{validationErrors.phone}</p>
+                  )}
+                </div>
+
+                {/* Nickname Input */}
+                <div className="space-y-2">
+                  <Label htmlFor="nickname">昵称</Label>
+                  <Input
+                    id="nickname"
+                    name="nickname"
+                    type="text"
+                    value={formData.nickname}
+                    onChange={(e) => handleInputChange('nickname')(e.target.value)}
+                    disabled={isLoading}
+                    placeholder="请输入昵称"
+                    className={cn(
+                      validationErrors.nickname && "border-red-500 focus:border-red-500"
+                    )}
+                  />
+                  {validationErrors.nickname && (
+                    <p className="text-sm text-red-600">{validationErrors.nickname}</p>
+                  )}
                 </div>
 
                 {/* Password Input */}
@@ -277,18 +312,19 @@ export function RegisterForm() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>输入验证码</Label>
-                  <VerificationInput
-                    length={6}
-                    onComplete={(code) => {
-                      setFormData(prev => ({ ...prev, verificationCode: code }));
-                      setValidationErrors(prev => ({ ...prev, verificationCode: undefined }));
-                    }}
-                    onChange={(code) => {
-                      setFormData(prev => ({ ...prev, verificationCode: code }));
-                    }}
-                    error={!!validationErrors.verificationCode}
+                  <Label htmlFor="code">输入验证码</Label>
+                  <Input
+                    id="code"
+                    name="code"
+                    type="text"
+                    value={formData.verificationCode}
+                    onChange={(e) => handleInputChange('verificationCode')(e.target.value)}
                     disabled={isLoading}
+                    placeholder="请输入6位验证码"
+                    maxLength={6}
+                    className={cn(
+                      validationErrors.verificationCode && "border-red-500 focus:border-red-500"
+                    )}
                   />
                   {validationErrors.verificationCode && (
                     <p className="text-sm text-red-600">{validationErrors.verificationCode}</p>

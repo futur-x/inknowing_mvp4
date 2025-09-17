@@ -59,7 +59,7 @@ export function useBooks(params?: BookQueryParams, config?: SWRConfiguration) {
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<BookListResponse>(
     `/books${queryString ? `?${queryString}` : ''}`,
-    () => apiClient.get(`/books${queryString ? `?${queryString}` : ''}`).then(res => res.data),
+    () => apiClient.get(`/books${queryString ? `?${queryString}` : ''}`),
     { ...defaultSWRConfig, ...config }
   );
 
@@ -109,7 +109,7 @@ export function useBooksInfinite(params?: Omit<BookQueryParams, 'page'>, config?
 
   const { data, error, isLoading, isValidating, size, setSize, mutate } = useSWRInfinite<BookListResponse>(
     getKey,
-    (url) => apiClient.get(url).then(res => res.data),
+    (url) => apiClient.get(url),
     { ...defaultSWRConfig, ...config }
   );
 
@@ -146,7 +146,7 @@ export function usePopularBooks(
 ) {
   const { data, error, isLoading, isValidating, mutate } = useSWR<Book[]>(
     `/books/popular?period=${period}&limit=${limit}`,
-    () => apiClient.get(`/books/popular?period=${period}&limit=${limit}`).then(res => res.data),
+    () => apiClient.get(`/books/popular?period=${period}&limit=${limit}`),
     { ...defaultSWRConfig, ...config }
   );
 
@@ -166,7 +166,7 @@ export function usePopularBooks(
 export function useBook(bookId: string | null, config?: SWRConfiguration) {
   const { data, error, isLoading, isValidating, mutate } = useSWR<Book>(
     bookId ? `/books/${bookId}` : null,
-    () => bookId ? apiClient.get(`/books/${bookId}`).then(res => res.data) : null,
+    () => bookId ? apiClient.get(`/books/${bookId}`) : null,
     { ...defaultSWRConfig, ...config }
   );
 
@@ -193,7 +193,7 @@ export function useBookSearch(
   const { data, error, isLoading, isValidating, mutate } = useSWR<SearchResponse>(
     debouncedQuery ? `/search/books?title=${encodeURIComponent(debouncedQuery)}` : null,
     () => debouncedQuery
-      ? apiClient.get(`/search/books?title=${encodeURIComponent(debouncedQuery)}`).then(res => res.data)
+      ? apiClient.get(`/search/books?title=${encodeURIComponent(debouncedQuery)}`)
       : null,
     { ...defaultSWRConfig, ...config }
   );
@@ -240,11 +240,11 @@ export function useGeneralSearch(
       });
 
       // Process results to add client-side relevance scoring if needed
-      if (response.data?.results) {
-        response.data.results = enhanceSearchResults(response.data.results, debouncedQuery, type);
+      if (response?.results) {
+        response.results = enhanceSearchResults(response.results, debouncedQuery, type);
       }
 
-      return response.data;
+      return response;
     },
     { ...defaultSWRConfig, ...config }
   );

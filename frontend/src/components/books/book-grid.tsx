@@ -127,8 +127,11 @@ export function BookGrid({
   className,
   skeletonCount = 8
 }: BookGridProps) {
+  // Ensure books is always an array
+  const booksList = Array.isArray(books) ? books : [];
+
   // Show skeleton loading state
-  if (isLoading && books.length === 0) {
+  if (isLoading && booksList.length === 0) {
     if (variant === 'list') {
       return (
         <div className="space-y-4">
@@ -153,7 +156,7 @@ export function BookGrid({
   }
 
   // Show empty state
-  if (!isLoading && books.length === 0) {
+  if (!isLoading && booksList.length === 0) {
     return <EmptyState message={emptyMessage} icon={emptyIcon} />;
   }
 
@@ -161,7 +164,7 @@ export function BookGrid({
   if (variant === 'list') {
     return (
       <div className={cn('space-y-4', className)}>
-        {books.map((book) => (
+        {booksList.map((book) => (
           <BookCard
             key={book.id}
             book={book}
@@ -181,7 +184,7 @@ export function BookGrid({
       columnClasses[columns],
       className
     )}>
-      {books.map((book) => (
+      {booksList.map((book) => (
         <BookCard
           key={book.id}
           book={book}

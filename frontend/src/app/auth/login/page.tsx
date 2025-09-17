@@ -229,6 +229,7 @@ export default function LoginPage() {
                 </label>
                 <Input
                   id="phone"
+                  name="phone"
                   type="tel"
                   placeholder="请输入手机号码"
                   {...phoneForm.register('phone')}
@@ -310,6 +311,7 @@ export default function LoginPage() {
                 </label>
                 <Input
                   id="sms-phone"
+                  name="phone"
                   type="tel"
                   placeholder="请输入手机号码"
                   {...smsForm.register('phone')}
@@ -325,6 +327,7 @@ export default function LoginPage() {
                 <div className="flex space-x-2">
                   <Input
                     id="code"
+                    name="code"
                     type="text"
                     placeholder="请输入6位验证码"
                     {...smsForm.register('code')}
