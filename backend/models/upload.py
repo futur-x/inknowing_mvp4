@@ -15,13 +15,13 @@ from datetime import datetime
 from config.database import Base
 
 
-class FileType(enum.Enum):
+class FileType(str, enum.Enum):
     """Allowed file types for uploads"""
     TXT = "txt"
     PDF = "pdf"
 
 
-class UploadStatus(enum.Enum):
+class UploadStatus(str, enum.Enum):
     """Upload processing status"""
     PENDING = "pending"
     PROCESSING = "processing"
@@ -29,7 +29,7 @@ class UploadStatus(enum.Enum):
     FAILED = "failed"
 
 
-class ProcessingStep(enum.Enum):
+class ProcessingStep(str, enum.Enum):
     """Processing step types"""
     AI_DETECTION = "ai_detection"
     TEXT_PREPROCESSING = "text_preprocessing"
@@ -40,7 +40,7 @@ class ProcessingStep(enum.Enum):
     MODEL_GENERATION = "model_generation"
 
 
-class StepStatus(enum.Enum):
+class StepStatus(str, enum.Enum):
     """Processing step status"""
     PENDING = "pending"
     PROCESSING = "processing"
@@ -51,13 +51,14 @@ class StepStatus(enum.Enum):
 class Upload(Base):
     """Upload model for tracking user book uploads"""
     __tablename__ = "uploads"
+    __table_args__ = {"schema": "content"}
 
     # Primary Key
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     # Foreign Keys
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    book_id = Column(UUID(as_uuid=True), ForeignKey("books.id"), nullable=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("auth.users.id", ondelete="CASCADE"), nullable=False, index=True)
+    book_id = Column(UUID(as_uuid=True), ForeignKey("content.books.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # File Information
     filename = Column(String(255), nullable=False)
@@ -106,8 +107,8 @@ class Upload(Base):
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = relationship("User", back_populates="uploads")
-    book = relationship("Book", back_populates="upload")
+    user = relationship("User")
+    book = relationship("Book")
 
     def __repr__(self):
         return f"<Upload(id={self.id}, title='{self.title}', status={self.status.value})>"

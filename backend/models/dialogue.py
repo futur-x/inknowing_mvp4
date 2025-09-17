@@ -125,9 +125,9 @@ class DialogueSession(SQLModel, table=True):
     )
 
     # Relationships
-    messages: List["DialogueMessage"] = Relationship(
-        back_populates="session"
-    )
+    # messages: List["DialogueMessage"] = Relationship(
+    #     back_populates="session"
+    # )
 
     def calculate_cost(self, input_tokens: int, output_tokens: int, model_config: Dict) -> float:
         """Calculate cost for tokens"""
@@ -225,7 +225,7 @@ class DialogueMessage(SQLModel, table=True):
 
     # Relationships
     session: Optional[DialogueSession] = Relationship(
-        back_populates="messages"
+        # back_populates="messages"
     )
 
 

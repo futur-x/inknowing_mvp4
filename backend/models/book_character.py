@@ -64,5 +64,5 @@ class BookCharacter(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    book = relationship("Book", back_populates="characters")
-    dialogue_sessions = relationship("DialogueSession", back_populates="character")
+    # book = relationship("Book", back_populates="characters")
+    # dialogue_sessions = relationship("DialogueSession", back_populates="character")

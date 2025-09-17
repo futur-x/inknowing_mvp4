@@ -1,0 +1,16 @@
+{
+  "name": "inknowing_mvp_ver4",
+  "version": "1.0.0",
+  "description": "## 🚀 项目概述",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "playwright": "^1.55.0"
+  }
+}

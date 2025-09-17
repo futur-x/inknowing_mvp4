@@ -20,7 +20,7 @@ from core.security import (
     generate_username,
     generate_verification_code,
 )
-from models.user import User, Token, MembershipType
+from models.user import User, Token, MembershipType, UserStatus
 from schemas.auth import (
     PhoneRegistration,
     WeChatRegistration,
@@ -33,7 +33,7 @@ from schemas.auth import (
     ErrorResponse,
 )
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter()
 
 
 async def create_auth_response(user: User) -> AuthResponse:
@@ -46,7 +46,7 @@ async def create_auth_response(user: User) -> AuthResponse:
         refresh_token=refresh_token,
         token_type="Bearer",
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        user=UserResponse.from_orm(user),
+        user=UserResponse.model_validate(user),
     )
 
 
@@ -84,6 +84,7 @@ async def register(
             phone_verified=True,
             nickname=request.nickname or f"User_{request.phone[-4:]}",
             membership=MembershipType.FREE,
+            status=UserStatus.ACTIVE,
             password_hash=get_password_hash(request.password) if request.password else None,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
@@ -114,6 +115,7 @@ async def register(
             wechat_openid=wechat_openid,
             nickname=request.nickname or f"WeChat_User_{uuid.uuid4().hex[:6]}",
             membership=MembershipType.FREE,
+            status=UserStatus.ACTIVE,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
