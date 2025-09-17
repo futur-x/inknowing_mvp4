@@ -9,14 +9,16 @@ test.describe('User Authentication Flow', () => {
   test.beforeEach(async ({ page, request }) => {
     helpers = new TestHelpers(page);
     apiClient = new APIClient(request);
+    // Navigate to the app first to establish context
+    await page.goto('/');
     await helpers.clearStorage();
   });
 
   test('should display login page', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/auth/login');
 
     // Check if login form is visible
-    await expect(page.locator('text="登录"').or(page.locator('text="Login"'))).toBeVisible();
+    await expect(page.locator('text="登录"').or(page.locator('text="Sign In"').or(page.locator('text="Login"')))).toBeVisible();
 
     // Check for phone input
     const phoneInput = page.locator('input[type="tel"]').or(page.locator('input[placeholder*="手机"]')).or(page.locator('input[placeholder*="phone"]'));

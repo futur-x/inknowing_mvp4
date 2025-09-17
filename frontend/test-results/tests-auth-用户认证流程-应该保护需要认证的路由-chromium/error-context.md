@@ -1,0 +1,146 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "InKnowing" [ref=e5] [cursor=pointer]:
+          - /url: /
+          - img [ref=e6] [cursor=pointer]
+          - generic [ref=e8] [cursor=pointer]: InKnowing
+        - navigation "Main" [ref=e9]:
+          - list [ref=e11]:
+            - listitem [ref=e12]:
+              - button "Discover" [ref=e13]:
+                - text: Discover
+                - img [ref=e14]
+        - generic [ref=e17]:
+          - link "Sign In" [ref=e18] [cursor=pointer]:
+            - /url: /auth/login
+          - link "Get Started" [ref=e19] [cursor=pointer]:
+            - /url: /auth/register
+    - main [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e23]:
+          - navigation "breadcrumb" [ref=e24]:
+            - list [ref=e25]:
+              - listitem [ref=e26]:
+                - link "首页" [ref=e27] [cursor=pointer]:
+                  - /url: /
+              - listitem [ref=e28]:
+                - img [ref=e29]
+              - listitem [ref=e31]:
+                - link "书籍" [disabled] [ref=e32]
+          - generic [ref=e33]:
+            - heading "探索书籍" [level=1] [ref=e35]:
+              - img [ref=e36]
+              - text: 探索书籍
+            - generic [ref=e40]:
+              - img
+              - textbox "搜索书籍..." [ref=e41]
+              - button [ref=e42]:
+                - img
+        - generic [ref=e43]:
+          - generic [ref=e45]:
+            - generic [ref=e47]:
+              - combobox [ref=e48]:
+                - generic: 全部类别
+                - img
+              - combobox [ref=e49]:
+                - generic: 全部难度
+                - img
+            - generic [ref=e50]:
+              - combobox [ref=e51]:
+                - generic: 最受欢迎
+                - img
+              - generic [ref=e52]:
+                - button [ref=e53]:
+                  - img
+                - button [ref=e54]:
+                  - img
+          - generic [ref=e55]:
+            - img [ref=e57]
+            - paragraph [ref=e59]: 暂无书籍，请调整筛选条件
+          - generic [ref=e63]: 加载更多...
+    - contentinfo [ref=e64]:
+      - generic [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - link "InKnowing" [ref=e68] [cursor=pointer]:
+              - /url: /
+              - img [ref=e69] [cursor=pointer]
+              - generic [ref=e71] [cursor=pointer]: InKnowing
+            - paragraph [ref=e72]: AI-powered book dialogue platform. Have conversations with books and their characters.
+            - generic [ref=e73]:
+              - link [ref=e74] [cursor=pointer]:
+                - /url: https://github.com/inknowing
+                - img [ref=e75] [cursor=pointer]
+              - link [ref=e78] [cursor=pointer]:
+                - /url: https://twitter.com/inknowing
+                - img [ref=e79] [cursor=pointer]
+              - link [ref=e81] [cursor=pointer]:
+                - /url: mailto:support@inknowing.ai
+                - img [ref=e82] [cursor=pointer]
+          - generic [ref=e85]:
+            - heading "Discover" [level=3] [ref=e86]
+            - list [ref=e87]:
+              - listitem [ref=e88]:
+                - link "Ask Questions" [ref=e89] [cursor=pointer]:
+                  - /url: /search
+              - listitem [ref=e90]:
+                - link "Browse Books" [ref=e91] [cursor=pointer]:
+                  - /url: /books
+              - listitem [ref=e92]:
+                - link "Popular Books" [ref=e93] [cursor=pointer]:
+                  - /url: /books/popular
+              - listitem [ref=e94]:
+                - link "Business Books" [ref=e95] [cursor=pointer]:
+                  - /url: /books?category=business
+              - listitem [ref=e96]:
+                - link "Psychology" [ref=e97] [cursor=pointer]:
+                  - /url: /books?category=psychology
+          - generic [ref=e98]:
+            - heading "Platform" [level=3] [ref=e99]
+            - list [ref=e100]:
+              - listitem [ref=e101]:
+                - link "How It Works" [ref=e102] [cursor=pointer]:
+                  - /url: /how-it-works
+              - listitem [ref=e103]:
+                - link "Membership Plans" [ref=e104] [cursor=pointer]:
+                  - /url: /membership
+              - listitem [ref=e105]:
+                - link "Upload Books" [ref=e106] [cursor=pointer]:
+                  - /url: /upload
+              - listitem [ref=e107]:
+                - link "API Docs" [ref=e108] [cursor=pointer]:
+                  - /url: /developers
+          - generic [ref=e109]:
+            - heading "Support" [level=3] [ref=e110]
+            - list [ref=e111]:
+              - listitem [ref=e112]:
+                - link "Help Center" [ref=e113] [cursor=pointer]:
+                  - /url: /help
+              - listitem [ref=e114]:
+                - link "Contact Us" [ref=e115] [cursor=pointer]:
+                  - /url: /contact
+              - listitem [ref=e116]:
+                - link "Feedback" [ref=e117] [cursor=pointer]:
+                  - /url: /feedback
+              - listitem [ref=e118]:
+                - link "System Status" [ref=e119] [cursor=pointer]:
+                  - /url: /status
+        - generic [ref=e120]:
+          - paragraph [ref=e121]: © 2025 InKnowing. All rights reserved.
+          - generic [ref=e122]:
+            - link "Privacy Policy" [ref=e123] [cursor=pointer]:
+              - /url: /privacy
+            - link "Terms of Service" [ref=e124] [cursor=pointer]:
+              - /url: /terms
+            - link "Cookie Policy" [ref=e125] [cursor=pointer]:
+              - /url: /cookies
+    - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e131] [cursor=pointer]:
+    - img [ref=e132] [cursor=pointer]
+  - alert [ref=e135]
+```

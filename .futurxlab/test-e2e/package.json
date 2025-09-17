@@ -1,0 +1,26 @@
+{
+  "name": "inknowing-e2e-tests",
+  "version": "1.0.0",
+  "description": "End-to-end tests for InKnowing platform",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:headed": "playwright test --headed",
+    "test:auth": "playwright test auth.spec.ts",
+    "test:books": "playwright test books.spec.ts",
+    "test:dialogue": "playwright test dialogue.spec.ts",
+    "test:upload": "playwright test upload.spec.ts",
+    "test:membership": "playwright test membership.spec.ts",
+    "report": "playwright show-report",
+    "install": "playwright install"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

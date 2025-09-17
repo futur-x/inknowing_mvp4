@@ -40,12 +40,12 @@ class DialogueSession(SQLModel, table=True):
         description="Session UUID"
     )
     user_id: str = Field(
-        foreign_key="users.id",
+        foreign_key="auth.users.id",
         index=True,
         description="User ID"
     )
     book_id: str = Field(
-        foreign_key="books.id",
+        foreign_key="content.books.id",
         index=True,
         description="Book ID"
     )
@@ -54,7 +54,7 @@ class DialogueSession(SQLModel, table=True):
     )
     character_id: Optional[str] = Field(
         default=None,
-        foreign_key="book_characters.id",
+        foreign_key="content.book_characters.id",
         index=True,
         description="Character ID for character dialogue"
     )
@@ -298,7 +298,7 @@ class AIUsageTracking(SQLModel, table=True):
         primary_key=True
     )
     user_id: str = Field(
-        foreign_key="users.id",
+        foreign_key="auth.users.id",
         index=True
     )
     session_id: Optional[str] = Field(
@@ -430,4 +430,4 @@ class PromptTemplate(SQLModel, table=True):
         default_factory=datetime.utcnow,
         sa_column_kwargs={"onupdate": func.now()}
     )
-    created_by: str = Field(foreign_key="admins.id")
+    created_by: str = Field(foreign_key="auth.admins.id")

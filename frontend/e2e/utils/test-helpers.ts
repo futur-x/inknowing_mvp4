@@ -14,10 +14,19 @@ export class TestHelpers {
   }
 
   async clearStorage() {
-    await this.page.evaluate(() => {
-      localStorage.clear();
-      sessionStorage.clear();
-    });
+    try {
+      await this.page.evaluate(() => {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.clear();
+        }
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.clear();
+        }
+      });
+    } catch (error) {
+      // Ignore security errors when accessing storage
+      console.log('Storage clear skipped due to security restrictions');
+    }
   }
 
   async getAuthToken(): Promise<string | null> {

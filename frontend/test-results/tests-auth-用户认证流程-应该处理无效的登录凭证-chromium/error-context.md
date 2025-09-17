@@ -1,0 +1,173 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "InKnowing" [ref=e5] [cursor=pointer]:
+          - /url: /
+          - img [ref=e6] [cursor=pointer]
+          - generic [ref=e8] [cursor=pointer]: InKnowing
+        - navigation "Main" [ref=e9]:
+          - list [ref=e11]:
+            - listitem [ref=e12]:
+              - button "Discover" [ref=e13]:
+                - text: Discover
+                - img [ref=e14]
+        - generic [ref=e17]:
+          - link "Sign In" [ref=e18] [cursor=pointer]:
+            - /url: /auth/login
+          - link "Get Started" [ref=e19] [cursor=pointer]:
+            - /url: /auth/register
+    - main [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e25]:
+          - link "知 InKnowing" [ref=e27] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e29] [cursor=pointer]: 知
+            - generic [ref=e30] [cursor=pointer]: InKnowing
+          - generic [ref=e31]:
+            - heading "与书籍对话 探索知识宇宙" [level=1] [ref=e32]:
+              - text: 与书籍对话
+              - text: 探索知识宇宙
+            - paragraph [ref=e33]: 通过AI技术，让每一本书都能与您直接对话。 提出问题，获得答案，深度探索书籍的精髓。
+            - generic [ref=e34]:
+              - generic [ref=e37]: 智能书籍问答系统
+              - generic [ref=e40]: 角色扮演深度对话
+              - generic [ref=e43]: 个人知识图谱构建
+        - generic [ref=e48]:
+          - generic [ref=e50]:
+            - generic [ref=e51]:
+              - heading "欢迎回来" [level=1] [ref=e52]
+              - paragraph [ref=e53]: 登录您的 InKnowing 账户，继续探索知识
+            - generic [ref=e54]:
+              - generic [ref=e56]:
+                - button "密码登录" [ref=e57]:
+                  - img
+                  - text: 密码登录
+                - button "验证码登录" [ref=e58]:
+                  - img
+                  - text: 验证码登录
+              - generic [ref=e59]:
+                - generic [ref=e60]:
+                  - generic [ref=e61]:
+                    - generic [ref=e62]: 手机号码
+                    - textbox "手机号码" [active] [ref=e63]: "12345678900"
+                  - generic [ref=e64]:
+                    - generic [ref=e65]: 密码
+                    - generic [ref=e66]:
+                      - textbox "密码" [ref=e67]
+                      - button [ref=e68]:
+                        - img
+                  - generic [ref=e69]:
+                    - generic [ref=e70]:
+                      - checkbox "记住我" [ref=e71]
+                      - generic [ref=e72]: 记住我
+                    - link "忘记密码？" [ref=e73] [cursor=pointer]:
+                      - /url: /auth/forgot-password
+                  - button "登录" [ref=e74]
+                - generic [ref=e79]: 或
+                - generic [ref=e80]:
+                  - button "微信登录" [ref=e81]:
+                    - img
+                    - text: 微信登录
+                  - button "游客模式体验" [ref=e82]
+                - paragraph [ref=e84]:
+                  - text: 还没有账户？
+                  - link "立即注册" [ref=e85] [cursor=pointer]:
+                    - /url: /auth/register
+            - link "返回首页" [ref=e87] [cursor=pointer]:
+              - /url: /
+              - img [ref=e88] [cursor=pointer]
+              - text: 返回首页
+          - generic [ref=e90]:
+            - paragraph [ref=e91]:
+              - text: 继续使用即表示您同意我们的
+              - link "服务条款" [ref=e92] [cursor=pointer]:
+                - /url: /terms
+              - text: 和
+              - link "隐私政策" [ref=e93] [cursor=pointer]:
+                - /url: /privacy
+            - paragraph [ref=e94]: © 2024 InKnowing. All rights reserved.
+    - contentinfo [ref=e95]:
+      - generic [ref=e96]:
+        - generic [ref=e97]:
+          - generic [ref=e98]:
+            - link "InKnowing" [ref=e99] [cursor=pointer]:
+              - /url: /
+              - img [ref=e100] [cursor=pointer]
+              - generic [ref=e102] [cursor=pointer]: InKnowing
+            - paragraph [ref=e103]: AI-powered book dialogue platform. Have conversations with books and their characters.
+            - generic [ref=e104]:
+              - link [ref=e105] [cursor=pointer]:
+                - /url: https://github.com/inknowing
+                - img [ref=e106] [cursor=pointer]
+              - link [ref=e109] [cursor=pointer]:
+                - /url: https://twitter.com/inknowing
+                - img [ref=e110] [cursor=pointer]
+              - link [ref=e112] [cursor=pointer]:
+                - /url: mailto:support@inknowing.ai
+                - img [ref=e113] [cursor=pointer]
+          - generic [ref=e116]:
+            - heading "Discover" [level=3] [ref=e117]
+            - list [ref=e118]:
+              - listitem [ref=e119]:
+                - link "Ask Questions" [ref=e120] [cursor=pointer]:
+                  - /url: /search
+              - listitem [ref=e121]:
+                - link "Browse Books" [ref=e122] [cursor=pointer]:
+                  - /url: /books
+              - listitem [ref=e123]:
+                - link "Popular Books" [ref=e124] [cursor=pointer]:
+                  - /url: /books/popular
+              - listitem [ref=e125]:
+                - link "Business Books" [ref=e126] [cursor=pointer]:
+                  - /url: /books?category=business
+              - listitem [ref=e127]:
+                - link "Psychology" [ref=e128] [cursor=pointer]:
+                  - /url: /books?category=psychology
+          - generic [ref=e129]:
+            - heading "Platform" [level=3] [ref=e130]
+            - list [ref=e131]:
+              - listitem [ref=e132]:
+                - link "How It Works" [ref=e133] [cursor=pointer]:
+                  - /url: /how-it-works
+              - listitem [ref=e134]:
+                - link "Membership Plans" [ref=e135] [cursor=pointer]:
+                  - /url: /membership
+              - listitem [ref=e136]:
+                - link "Upload Books" [ref=e137] [cursor=pointer]:
+                  - /url: /upload
+              - listitem [ref=e138]:
+                - link "API Docs" [ref=e139] [cursor=pointer]:
+                  - /url: /developers
+          - generic [ref=e140]:
+            - heading "Support" [level=3] [ref=e141]
+            - list [ref=e142]:
+              - listitem [ref=e143]:
+                - link "Help Center" [ref=e144] [cursor=pointer]:
+                  - /url: /help
+              - listitem [ref=e145]:
+                - link "Contact Us" [ref=e146] [cursor=pointer]:
+                  - /url: /contact
+              - listitem [ref=e147]:
+                - link "Feedback" [ref=e148] [cursor=pointer]:
+                  - /url: /feedback
+              - listitem [ref=e149]:
+                - link "System Status" [ref=e150] [cursor=pointer]:
+                  - /url: /status
+        - generic [ref=e151]:
+          - paragraph [ref=e152]: © 2025 InKnowing. All rights reserved.
+          - generic [ref=e153]:
+            - link "Privacy Policy" [ref=e154] [cursor=pointer]:
+              - /url: /privacy
+            - link "Terms of Service" [ref=e155] [cursor=pointer]:
+              - /url: /terms
+            - link "Cookie Policy" [ref=e156] [cursor=pointer]:
+              - /url: /cookies
+    - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e162] [cursor=pointer]:
+    - img [ref=e163] [cursor=pointer]
+  - alert [ref=e166]
+```

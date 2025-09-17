@@ -116,7 +116,7 @@ class Admin(SQLModel, table=True):
         default_factory=datetime.utcnow,
         sa_column_kwargs={"onupdate": func.now()}
     )
-    created_by: Optional[str] = Field(default=None, foreign_key="admins.id")
+    created_by: Optional[str] = Field(default=None, foreign_key="auth.admins.id")
 
     # Relationships
     audit_logs: List["AuditLog"] = Relationship(back_populates="admin")
@@ -165,7 +165,7 @@ class AdminToken(SQLModel, table=True):
         default_factory=lambda: str(uuid4()),
         primary_key=True
     )
-    admin_id: str = Field(foreign_key="admins.id", index=True)
+    admin_id: str = Field(foreign_key="auth.admins.id", index=True)
     token: str = Field(unique=True, index=True)
     refresh_token: Optional[str] = Field(unique=True, index=True)
     expires_at: datetime = Field()
@@ -188,7 +188,7 @@ class AuditLog(SQLModel, table=True):
         default_factory=lambda: str(uuid4()),
         primary_key=True
     )
-    admin_id: str = Field(foreign_key="admins.id", index=True)
+    admin_id: str = Field(foreign_key="auth.admins.id", index=True)
     action: AuditActionType = Field(index=True)
     entity_type: Optional[str] = Field(
         default=None,
@@ -253,7 +253,7 @@ class SystemConfig(SQLModel, table=True):
     is_active: bool = Field(default=True)
 
     # Audit
-    updated_by: str = Field(foreign_key="admins.id")
+    updated_by: str = Field(foreign_key="auth.admins.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(
         default_factory=datetime.utcnow,
@@ -308,4 +308,4 @@ class AIModelConfig(SQLModel, table=True):
         default_factory=datetime.utcnow,
         sa_column_kwargs={"onupdate": func.now()}
     )
-    updated_by: str = Field(foreign_key="admins.id")
+    updated_by: str = Field(foreign_key="auth.admins.id")
