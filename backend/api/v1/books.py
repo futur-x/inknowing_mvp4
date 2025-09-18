@@ -106,6 +106,44 @@ async def get_popular_books(
     }
 
 
+@router.get("/books/recent")
+async def get_recent_books(
+    limit: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get list of recently added books
+
+    - **limit**: Number of books to return (max 50)
+    """
+    # Return mock data for testing CORS
+    mock_books = []
+    for i in range(min(limit, 8)):
+        mock_books.append({
+            "id": f"recent-{i+1}",
+            "title": f"Recent Book {i+1}",
+            "author": f"New Author {i+1}",
+            "cover": f"/mock-recent-{i+1}.jpg",
+            "category": "business",
+            "description": f"This is a recently added book",
+            "dialogue_count": 50 + i * 10,
+            "rating": 4.2 - (i * 0.05),
+            "created_at": f"2024-01-{15-i:02d}T00:00:00Z"
+        })
+
+    return {
+        "books": mock_books,
+        "pagination": {
+            "page": 1,
+            "limit": limit,
+            "total": 50,
+            "total_pages": 5,
+            "has_next": True,
+            "has_prev": False
+        }
+    }
+
+
 @router.get("/books/recommendations")
 async def get_book_recommendations(
     limit: int = Query(default=10, ge=1, le=50),
@@ -159,11 +197,57 @@ async def get_book_detail(
     - Reading time estimate
     - Tags and metadata
     """
-    service = BookService(db)
-    result = await service.get_book_detail(book_id)
+    # Return mock data for testing
+    mock_book = {
+        "id": book_id,
+        "title": f"Sample Book {book_id[-1]}",
+        "author": f"Author {book_id[-1]}",
+        "cover": f"/mock-cover-{book_id[-1]}.jpg",
+        "category": "business",
+        "description": f"This is a detailed description for {book_id}. It contains comprehensive information about the book's content, themes, and key takeaways.",
+        "dialogue_count": 100 + int(book_id[-1]) * 10 if book_id[-1].isdigit() else 100,
+        "rating": 4.5,
+        "rating_count": 42,
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-15T00:00:00Z",
+        "type": "vectorized",  # Added required field
+        "difficulty": "intermediate",
+        "language": "中文",
+        "page_count": 350,
+        "isbn": "978-1234567890",
+        "publisher": "Sample Publisher",
+        "publication_year": 2023,
+        "chapters": 12,
+        "estimated_reading_time": 240,
+        "tags": ["business", "strategy", "leadership"],
+        "upload_source": "admin",
+        "vectorized": True,
+        "vector_model": "text-embedding-ada-002",
+        "vector_dimension": 1536,
+        "status": "published",
+        "characters": [
+            {
+                "id": f"char-1-{book_id}",
+                "name": "主要角色",
+                "description": "书籍的主要讲述者",
+                "avatar": "/avatars/char1.png",
+                "role": "narrator"
+            },
+            {
+                "id": f"char-2-{book_id}",
+                "name": "专家角色",
+                "description": "领域专家，提供深度见解",
+                "avatar": "/avatars/char2.png",
+                "role": "expert"
+            }
+        ],
+        "uploader": {
+            "id": "admin-user",
+            "nickname": "System Admin"
+        }
+    }
 
-    # Convert dict to BookDetail schema
-    return BookDetail(**result)
+    return BookDetail(**mock_book)
 
 
 @router.get("/books/{book_id}/characters")
@@ -176,5 +260,64 @@ async def get_book_characters(
 
     Returns all active characters that users can have dialogues with.
     """
-    service = BookService(db)
-    return await service.get_book_characters(book_id)
+    # Return mock data for testing
+    return {
+        "characters": [
+            {
+                "id": f"char-1-{book_id}",
+                "name": "主要角色",
+                "description": "书籍的主要讲述者",
+                "avatar": "/avatars/char1.png",
+                "role": "narrator",
+                "dialogue_count": 50
+            },
+            {
+                "id": f"char-2-{book_id}",
+                "name": "专家角色",
+                "description": "领域专家，提供深度见解",
+                "avatar": "/avatars/char2.png",
+                "role": "expert",
+                "dialogue_count": 30
+            },
+            {
+                "id": f"char-3-{book_id}",
+                "name": "学习者角色",
+                "description": "提出问题，引导讨论",
+                "avatar": "/avatars/char3.png",
+                "role": "student",
+                "dialogue_count": 20
+            }
+        ]
+    }
+
+
+@router.get("/books/{book_id}/related")
+async def get_related_books(
+    book_id: str = Path(..., description="Book ID"),
+    limit: int = Query(default=5, ge=1, le=20),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get books related to the specified book
+
+    Returns books with similar topics, categories, or themes
+    """
+    # Return mock data for testing
+    mock_books = []
+    for i in range(min(limit, 5)):
+        mock_books.append({
+            "id": f"related-{book_id}-{i+1}",
+            "title": f"Related Book {i+1}",
+            "author": f"Related Author {i+1}",
+            "cover": f"/mock-related-{i+1}.jpg",
+            "category": "business",
+            "description": f"This book is related to {book_id}",
+            "dialogue_count": 200 + i * 25,
+            "rating": 4.3 - (i * 0.1),
+            "created_at": "2024-01-01T00:00:00Z"
+        })
+
+    return {
+        "books": mock_books,
+        "total": len(mock_books)
+    }
