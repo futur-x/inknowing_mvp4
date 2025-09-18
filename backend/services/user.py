@@ -68,10 +68,12 @@ class UserService:
             "super": 1000,  # 1000 per month
         }
 
-        total_quota = quota_limits.get(user.membership, 20)
+        # Get membership value as string
+        membership_str = user.membership.value if hasattr(user.membership, 'value') else str(user.membership)
+        total_quota = quota_limits.get(membership_str, 20)
 
         # Calculate reset date
-        if user.membership == "free":
+        if membership_str == "free":
             # Daily reset for free users
             tomorrow = datetime.utcnow() + timedelta(days=1)
             reset_at = tomorrow.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -95,11 +97,14 @@ class UserService:
         user = await self.get_user_profile(user_id)
         quota_info = await self.get_user_quota(user_id)
 
+        # Get membership value as string
+        membership_str = user.membership.value if hasattr(user.membership, 'value') else str(user.membership)
+
         # Define membership benefits
-        benefits = self._get_membership_benefits(user.membership)
+        benefits = self._get_membership_benefits(membership_str)
 
         return {
-            "type": user.membership,
+            "type": membership_str,
             "expires_at": user.membership_expires_at,
             "quota_total": quota_info["total"],
             "quota_used": quota_info["used"],

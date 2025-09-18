@@ -16,7 +16,9 @@ const authRoutes = [
   '/auth/login',
   '/auth/register',
   '/auth/forgot-password',
-  '/auth/verify'
+  '/auth/verify',
+  '/login',
+  '/register'
 ];
 
 export function middleware(request: NextRequest) {
@@ -32,8 +34,8 @@ export function middleware(request: NextRequest) {
     pathname.startsWith(route)
   );
 
-  // Get the auth token from cookies
-  const token = request.cookies.get('auth-token')?.value;
+  // Get the auth token from cookies (using the cookie name set by backend)
+  const token = request.cookies.get('access_token')?.value;
 
   // If accessing a protected route without a token, redirect to login
   if (isProtectedRoute && !token) {
@@ -43,9 +45,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // If accessing auth routes with a token, redirect to dashboard
+  // If accessing auth routes with a token, redirect to home or dashboard
   if (isAuthRoute && token) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    // Check if there's a redirect parameter
+    const redirect = request.nextUrl.searchParams.get('redirect');
+    const targetUrl = redirect || '/';
+    return NextResponse.redirect(new URL(targetUrl, request.url));
   }
 
   // Allow the request to continue

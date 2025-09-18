@@ -2,7 +2,7 @@
 FastAPI dependencies for authentication and authorization
 """
 from typing import Optional
-from fastapi import Depends, HTTPException, status, Security
+from fastapi import Depends, HTTPException, status, Security, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -17,14 +17,16 @@ security = HTTPBearer()
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False)),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """
     Get current authenticated user from JWT token
 
     Args:
-        credentials: Bearer token credentials
+        request: FastAPI request object
+        credentials: Optional Bearer token credentials
         db: Database session
 
     Returns:
@@ -33,7 +35,20 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or user not found
     """
-    token = credentials.credentials
+    # First, try to get token from cookie
+    token = request.cookies.get("access_token")
+
+    # If no cookie, try to get from Authorization header
+    if not token and credentials:
+        token = credentials.credentials
+
+    # If still no token, raise authentication error
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     payload = verify_token(token, token_type="access")
 
     if not payload:
@@ -126,6 +141,7 @@ async def get_current_premium_user(
 
 
 async def get_optional_current_user(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(
         HTTPBearer(auto_error=False)
     ),
@@ -135,16 +151,23 @@ async def get_optional_current_user(
     Get current user if authenticated, None otherwise
 
     Args:
+        request: FastAPI request object
         credentials: Optional bearer token
         db: Database session
 
     Returns:
         User object if authenticated, None otherwise
     """
-    if not credentials:
-        return None
+    # First, try to get token from cookie
+    token = request.cookies.get("access_token")
 
-    token = credentials.credentials
+    # If no cookie, try to get from Authorization header
+    if not token and credentials:
+        token = credentials.credentials
+
+    # If no token at all, return None
+    if not token:
+        return None
     payload = verify_token(token, token_type="access")
 
     if not payload:
@@ -203,12 +226,13 @@ rate_limit_upload = RateLimitDependency("upload")
 
 
 async def get_admin_user(
+    request: Request,
     db: AsyncSession = Depends(get_db),
-    credentials: HTTPAuthorizationCredentials = Security(security)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
 ) -> "Admin":
     """Get current admin user (placeholder implementation)"""
     # This is a simplified implementation - should verify admin role
-    current_user = await get_current_active_user(db, credentials)
+    current_user = await get_current_user(request, credentials, db)
 
     # For now, treat any user as admin for development
     # In production, check admin role from admin table

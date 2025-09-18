@@ -16,61 +16,33 @@ export class ApiClient {
     this.retries = 3
   }
 
-  // Get authentication token from localStorage
+  // Get authentication token - no longer needed with cookies
   public getAuthToken(): string | null {
-    try {
-      if (typeof window === 'undefined') return null
-
-      const authData = localStorage.getItem('inknowing-auth')
-      if (!authData) return null
-
-      const parsed = JSON.parse(authData)
-      return parsed.state?.token || null
-    } catch {
-      return null
-    }
+    // Cookies are automatically sent, no need to get token manually
+    return null
   }
 
-  // Get refresh token from localStorage
+  // Get refresh token - no longer needed with cookies
   private getRefreshToken(): string | null {
-    try {
-      if (typeof window === 'undefined') return null
-
-      const authData = localStorage.getItem('inknowing-auth')
-      if (!authData) return null
-
-      const parsed = JSON.parse(authData)
-      return parsed.state?.refreshToken || null
-    } catch {
-      return null
-    }
+    // Refresh token is stored in httponly cookie
+    return null
   }
 
-  // Update tokens in localStorage
+  // Update tokens - no longer needed with cookies
   private updateTokens(authData: AuthResponse): void {
-    try {
-      if (typeof window === 'undefined') return
-
-      const stored = localStorage.getItem('inknowing-auth')
-      if (!stored) return
-
-      const parsed = JSON.parse(stored)
-      parsed.state.token = authData.access_token
-      parsed.state.refreshToken = authData.refresh_token
-      parsed.state.user = authData.user
-      localStorage.setItem('inknowing-auth', JSON.stringify(parsed))
-    } catch (error) {
-      console.error('Failed to update tokens:', error)
+    // Tokens are handled by httponly cookies
+    // We only need to update user info in the auth store
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:tokens-updated', { detail: authData }))
     }
   }
 
   // Clear authentication data
   public clearAuth(): void {
-    try {
-      if (typeof window === 'undefined') return
-      localStorage.removeItem('inknowing-auth')
-    } catch (error) {
-      console.error('Failed to clear auth:', error)
+    // Cookies are cleared by the logout endpoint
+    // Notify components about auth clear
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:cleared'))
     }
   }
 
@@ -80,12 +52,8 @@ export class ApiClient {
       'Content-Type': 'application/json',
     }
 
-    if (includeAuth) {
-      const token = this.getAuthToken()
-      if (token) {
-        headers.Authorization = `Bearer ${token}`
-      }
-    }
+    // No need to manually add Authorization header
+    // Cookies will be sent automatically with credentials: 'include'
 
     return headers
   }
@@ -238,6 +206,7 @@ export class ApiClient {
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include', // Include cookies with refresh request
           body: JSON.stringify({ refresh_token: refreshToken }),
           signal: controller.signal,
         })
@@ -285,6 +254,7 @@ export class ApiClient {
             ...this.createHeaders(includeAuth),
             ...options.headers,
           },
+          credentials: 'include', // Include cookies with requests
           signal: controller.signal,
         })
       } finally {
@@ -349,17 +319,14 @@ export class ApiClient {
 
       try {
         const headers: HeadersInit = {}
-        if (includeAuth) {
-          const token = this.getAuthToken()
-          if (token) {
-            headers.Authorization = `Bearer ${token}`
-          }
-        }
+        // No need to manually add Authorization header
+        // Cookies will be sent automatically
 
         return await fetch(url, {
           method: 'POST',
           headers,
           body: formData,
+          credentials: 'include', // Include cookies with upload
           signal: controller.signal,
         })
       } finally {
@@ -483,13 +450,13 @@ export const api = {
   },
 
   // WebSocket Connection Helper
-  createWebSocketUrl: (sessionId: string, token?: string) => {
+  createWebSocketUrl: (sessionId: string) => {
     const wsBaseUrl = typeof window !== 'undefined'
       ? `ws://${window.location.hostname}:8888/ws`
       : (process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8888/ws')
 
-    const authToken = token || apiClient.getAuthToken()
-    return `${wsBaseUrl}/dialogue/${sessionId}${authToken ? `?token=${authToken}` : ''}`
+    // Authentication is handled via cookies
+    return `${wsBaseUrl}/dialogue/${sessionId}`
   },
 
   // Helper for getting current auth token

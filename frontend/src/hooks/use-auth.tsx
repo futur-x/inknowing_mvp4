@@ -14,6 +14,7 @@ export function useAuth(requireAuth: boolean = false) {
     user,
     token,
     isLoading,
+    isHydrated,
     login,
     register,
     logout,
@@ -36,10 +37,11 @@ export function useAuth(requireAuth: boolean = false) {
 
   // Redirect if authentication is required and user is not authenticated
   useEffect(() => {
-    if (!isLoading && requireAuth && !isAuthenticated) {
+    // Wait for hydration to complete before checking auth
+    if (isHydrated && !isLoading && requireAuth && !isAuthenticated) {
       router.push('/auth/login')
     }
-  }, [isAuthenticated, isLoading, requireAuth, router])
+  }, [isAuthenticated, isLoading, isHydrated, requireAuth, router])
 
   // Update profile function (placeholder - will be replaced by profile store)
   const updateProfile = useCallback(async (updates: any) => {
@@ -67,7 +69,8 @@ export function useAuth(requireAuth: boolean = false) {
     isAuthenticated,
     user,
     token,
-    isLoading,
+    isLoading: !isHydrated || isLoading, // Consider not hydrated as loading
+    isHydrated,
     error,
     login,
     register,

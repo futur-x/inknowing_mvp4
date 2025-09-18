@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Union
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 
@@ -74,6 +74,7 @@ async def create_auth_response(user: User) -> AuthResponse:
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     request: Union[PhoneRegistration, WeChatRegistration],
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -149,12 +150,36 @@ async def register(
     await db.commit()
     await db.refresh(user)
 
-    return await create_auth_response(user)
+    auth_response = await create_auth_response(user)
+
+    # Set httponly cookies for secure token storage
+    response.set_cookie(
+        key="access_token",
+        value=auth_response.access_token,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax",
+        path="/"
+    )
+
+    response.set_cookie(
+        key="refresh_token",
+        value=auth_response.refresh_token,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax",
+        path="/"
+    )
+
+    return auth_response
 
 
 @router.post("/login", response_model=AuthResponse)
 async def login(
     request: Union[PhoneLogin, WeChatLogin],
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -225,7 +250,30 @@ async def login(
     user.login_count = (user.login_count or 0) + 1
     await db.commit()
 
-    return await create_auth_response(user)
+    auth_response = await create_auth_response(user)
+
+    # Set httponly cookie for secure token storage
+    response.set_cookie(
+        key="access_token",
+        value=auth_response.access_token,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax",
+        path="/"
+    )
+
+    response.set_cookie(
+        key="refresh_token",
+        value=auth_response.refresh_token,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax",
+        path="/"
+    )
+
+    return auth_response
 
 
 @router.post("/refresh", response_model=AuthResponse)
@@ -283,12 +331,15 @@ async def send_verification_code(
 
 
 @router.post("/logout", status_code=status.HTTP_200_OK)
-async def logout():
+async def logout(response: Response):
     """
     User logout
 
-    Note: With JWT, logout is typically handled client-side by removing the token.
-    This endpoint can be used to blacklist tokens if needed.
+    Clear authentication cookies to log out the user.
     """
+    # Clear the authentication cookies
+    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="refresh_token", path="/")
+
     # TODO: Implement token blacklisting if needed
     return {"message": "Logout successful"}

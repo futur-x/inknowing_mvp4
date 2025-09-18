@@ -1,8 +1,8 @@
 // Auth Store - InKnowing MVP 4.0
 // Business Logic Conservation: Manages authentication state transitions
+// Now uses cookie-based authentication instead of localStorage
 
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import { api } from '@/lib/api'
 import type { User, AuthResponse, LoginFormData, RegisterFormData } from '@/types/api'
 
@@ -13,6 +13,7 @@ interface AuthState {
   refreshToken: string | null
   isAuthenticated: boolean
   isLoading: boolean
+  isHydrated: boolean
   error: string | null
 
   // Actions
@@ -24,21 +25,22 @@ interface AuthState {
   sendVerificationCode: (phone: string) => Promise<void>
   clearError: () => void
   setLoading: (loading: boolean) => void
+  setHydrated: () => void
 
   // Internal actions
   setAuth: (authData: AuthResponse) => void
   clearAuth: () => void
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
+export const useAuthStore = create<AuthState>(
+  (set, get) => ({
       // Initial state
       user: null,
       token: null,
       refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
+      isHydrated: false,
       error: null,
 
       // Initialize auth event listeners
@@ -46,6 +48,19 @@ export const useAuthStore = create<AuthState>()(
         if (typeof window !== 'undefined') {
           // Listen for auth refresh failures from API client
           window.addEventListener('auth:refresh-failed', () => {
+            get().clearAuth()
+          })
+
+          // Listen for auth tokens update from API client
+          window.addEventListener('auth:tokens-updated', ((event: CustomEvent) => {
+            const authData = event.detail as AuthResponse
+            if (authData.user) {
+              set({ user: authData.user })
+            }
+          }) as EventListener)
+
+          // Listen for auth cleared event
+          window.addEventListener('auth:cleared', () => {
             get().clearAuth()
           })
         }
@@ -101,16 +116,12 @@ export const useAuthStore = create<AuthState>()(
 
       // Refresh token action - Business Logic: Token renewal
       refreshAuth: async () => {
-        const { refreshToken } = get()
-        if (!refreshToken) {
-          get().clearAuth()
-          return
-        }
-
+        // Refresh token is now handled via cookies
         try {
           set({ isLoading: true, error: null })
 
-          const authData: AuthResponse = await api.auth.refresh({ refresh_token: refreshToken })
+          // The refresh endpoint will use the refresh_token cookie
+          const authData: AuthResponse = await api.auth.refresh({})
           get().setAuth(authData)
         } catch (error) {
           console.error('Token refresh failed:', error)
@@ -121,20 +132,19 @@ export const useAuthStore = create<AuthState>()(
 
       // Check authentication status
       checkAuth: async () => {
-        const { token } = get()
-        if (!token) {
-          set({ isLoading: false })
-          return
-        }
-
+        // Check if we have a user profile
         try {
           set({ isLoading: true })
-          // Verify token is still valid by refreshing
-          await get().refreshAuth()
+          // Try to get user profile - cookies will be sent automatically
+          const user = await api.users.getProfile()
+          set({
+            user,
+            isAuthenticated: true,
+            isLoading: false
+          })
         } catch (error) {
           console.error('Auth check failed:', error)
           get().clearAuth()
-        } finally {
           set({ isLoading: false })
         }
       },
@@ -159,13 +169,16 @@ export const useAuthStore = create<AuthState>()(
       // Utility actions
       clearError: () => set({ error: null }),
       setLoading: (loading: boolean) => set({ isLoading: loading }),
+      setHydrated: () => set({ isHydrated: true }),
 
       // Internal actions
       setAuth: (authData: AuthResponse) => {
+        // Tokens are now stored in httponly cookies
+        // We only store user info in state
         set({
           user: authData.user,
-          token: authData.access_token,
-          refreshToken: authData.refresh_token,
+          token: null, // Token is in cookie, not in state
+          refreshToken: null, // Refresh token is in cookie, not in state
           isAuthenticated: true,
           isLoading: false,
           error: null,
@@ -182,17 +195,7 @@ export const useAuthStore = create<AuthState>()(
           error: null,
         })
       },
-    }),
-    {
-      name: 'inknowing-auth',
-      partialize: (state) => ({
-        user: state.user,
-        token: state.token,
-        refreshToken: state.refreshToken,
-        isAuthenticated: state.isAuthenticated,
-      }),
-    }
-  )
+    })
 )
 
 // Selectors for common use cases
