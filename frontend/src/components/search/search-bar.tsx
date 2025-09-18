@@ -14,7 +14,6 @@ import { useBookSearch } from '@/hooks/use-books';
 import { useRouter } from 'next/navigation';
 import { Book } from '@/types/book';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface SearchBarProps {
   placeholder?: string;
@@ -131,60 +130,62 @@ export function SearchBar({
 
   return (
     <div className={cn(containerStyles[variant], className)}>
-      <Popover open={isOpen && showSuggestions} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <div className="relative">
-            <Search className={cn(
-              'absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none',
-              iconSizes[variant]
-            )} />
+      <div className="relative">
+        <Search className={cn(
+          'absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10',
+          iconSizes[variant]
+        )} />
 
-            <Input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setIsOpen(true);
-              }}
-              onFocus={() => setIsOpen(true)}
-              onKeyDown={handleKeyDown}
-              placeholder={placeholder}
-              className={cn(
-                inputStyles[variant],
-                'transition-all',
-                className
-              )}
-            />
+        <Input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          onBlur={(e) => {
+            // Only close if clicking outside the popover
+            setTimeout(() => {
+              if (!e.currentTarget.contains(document.activeElement)) {
+                setIsOpen(false);
+              }
+            }, 200);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          className={cn(
+            inputStyles[variant],
+            'transition-all',
+            className
+          )}
+        />
 
-            {query && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClear}
-                className="absolute right-12 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
-              >
-                <X className={iconSizes[variant]} />
-              </Button>
-            )}
+        {query && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClear}
+            className="absolute right-12 top-1/2 -translate-y-1/2 h-8 w-8 p-0 z-10"
+          >
+            <X className={iconSizes[variant]} />
+          </Button>
+        )}
 
-            <Button
-              onClick={() => handleSearch()}
-              variant="ghost"
-              size="sm"
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
-            >
-              <Search className={iconSizes[variant]} />
-            </Button>
-          </div>
-        </PopoverTrigger>
-
-        <PopoverContent
-          className="w-[var(--radix-popover-trigger-width)] p-0"
-          align="start"
+        <Button
+          onClick={() => handleSearch()}
+          variant="ghost"
+          size="sm"
+          className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 z-10"
         >
-          <Command>
-            <CommandList>
+          <Search className={iconSizes[variant]} />
+        </Button>
+
+        {(isOpen && showSuggestions) && (
+          <div className="absolute top-full left-0 right-0 z-50 mt-2">
+            <Command className="rounded-lg border shadow-md bg-popover">
+              <CommandList className="max-h-[300px] overflow-y-auto">
               {/* Recent Searches */}
               {showRecentSearches && recentSearches.length > 0 && !query && (
                 <CommandGroup heading="最近搜索">
@@ -272,10 +273,11 @@ export function SearchBar({
                   <span className="ml-2 text-sm text-muted-foreground">搜索中...</span>
                 </div>
               )}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+              </CommandList>
+            </Command>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
