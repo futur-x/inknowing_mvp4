@@ -159,6 +159,8 @@ export function ChatInput({
           <div className="flex-1 relative">
             <Textarea
               ref={textareaRef}
+              id="chat-message-input"
+              name="message"
               value={value}
               onChange={handleChange}
               onKeyDown={handleKeyPress}
@@ -171,6 +173,8 @@ export function ChatInput({
                 isLoading && 'opacity-50'
               )}
               style={{ height: 'auto' }}
+              autoComplete="off"
+              aria-label="Message input"
             />
 
             {/* Character Count */}

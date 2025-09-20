@@ -137,6 +137,8 @@ export function SearchBar({
         )} />
 
         <Input
+          id="search-input"
+          name="search"
           ref={inputRef}
           type="text"
           value={query}
@@ -155,6 +157,8 @@ export function SearchBar({
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
+          aria-label="Search"
+          autoComplete="off"
           className={cn(
             inputStyles[variant],
             'transition-all',

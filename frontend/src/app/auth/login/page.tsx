@@ -245,6 +245,7 @@ export default function LoginPage() {
                 <div className="relative">
                   <Input
                     id="password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="请输入密码"
                     {...phoneForm.register('password')}
@@ -270,6 +271,7 @@ export default function LoginPage() {
                 <div className="flex items-center space-x-2">
                   <input
                     id="remember"
+                    name="remember"
                     type="checkbox"
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />

@@ -233,6 +233,7 @@ export function RegisterForm() {
                   <Label htmlFor="password">密码</Label>
                   <Input
                     id="password"
+                    name="password"
                     type="password"
                     value={formData.password}
                     onChange={(e) => handleInputChange('password')(e.target.value)}
@@ -255,6 +256,7 @@ export function RegisterForm() {
                   <Label htmlFor="confirmPassword">确认密码</Label>
                   <Input
                     id="confirmPassword"
+                    name="confirmPassword"
                     type="password"
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange('confirmPassword')(e.target.value)}

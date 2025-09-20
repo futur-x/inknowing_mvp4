@@ -260,6 +260,9 @@ export const StreamingMessage = memo(function StreamingMessage({
             <div className="flex items-center gap-1">
               <Zap className="h-3 w-3 text-muted-foreground" />
               <select
+                id="streaming-speed-control"
+                name="streamingSpeed"
+                aria-label="Streaming speed"
                 value={speed}
                 onChange={(e) => handleSpeedChange(Number(e.target.value))}
                 className="text-xs bg-background border rounded px-1 py-0.5"
