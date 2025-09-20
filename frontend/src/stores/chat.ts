@@ -403,8 +403,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ...session,
           messages: page === 1 ? messages : [...messages, ...session.messages],
         }
-        get().activeSessions.set(sessionId, updatedSession)
-        set({ activeSessions: new Map(get().activeSessions) })
+        set((state) => ({
+          activeSessions: new Map(state.activeSessions).set(sessionId, updatedSession)
+        }))
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load messages'
@@ -454,33 +455,40 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messageQueue: [],
       lastActivityTime: Date.now()
     }
-    get().activeSessions.set(session.id, chatSession)
-    set({ activeSessions: new Map(get().activeSessions) })
+    set((state) => ({
+      activeSessions: new Map(state.activeSessions).set(session.id, chatSession)
+    }))
 
     // Auto-connect WebSocket for new session
     get().connectWebSocket(session.id)
   },
 
   updateSession: (sessionId: string, updates: Partial<ChatSession>) => {
-    const session = get().activeSessions.get(sessionId)
-    if (session) {
+    set((state) => {
+      const session = state.activeSessions.get(sessionId)
+      if (!session) return state
+
       const updatedSession = { ...session, ...updates }
-      get().activeSessions.set(sessionId, updatedSession)
-      set({ activeSessions: new Map(get().activeSessions) })
-    }
+      return {
+        activeSessions: new Map(state.activeSessions).set(sessionId, updatedSession)
+      }
+    })
   },
 
   addMessage: (sessionId: string, message: DialogueMessage) => {
-    const session = get().activeSessions.get(sessionId)
-    if (session) {
+    set((state) => {
+      const session = state.activeSessions.get(sessionId)
+      if (!session) return state
+
       const updatedSession = {
         ...session,
         messages: [...session.messages, message],
         lastActivityTime: Date.now()
       }
-      get().activeSessions.set(sessionId, updatedSession)
-      set({ activeSessions: new Map(get().activeSessions) })
-    }
+      return {
+        activeSessions: new Map(state.activeSessions).set(sessionId, updatedSession)
+      }
+    })
   },
 
   updateStreamingMessage: (sessionId: string, chunk: string) => {
@@ -498,12 +506,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   removeSession: (sessionId: string) => {
     get().disconnectWebSocket(sessionId)
-    get().activeSessions.delete(sessionId)
-    set({ activeSessions: new Map(get().activeSessions) })
-
-    if (get().currentSessionId === sessionId) {
-      set({ currentSessionId: null })
-    }
+    set((state) => {
+      const newSessions = new Map(state.activeSessions)
+      newSessions.delete(sessionId)
+      return {
+        activeSessions: newSessions,
+        currentSessionId: state.currentSessionId === sessionId ? null : state.currentSessionId
+      }
+    })
   },
 }))
 
