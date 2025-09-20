@@ -112,17 +112,17 @@ export default function BookDetailsPage() {
   const handleStartChat = () => {
     if (!user) {
       // Redirect to login with return URL
-      router.push(`/auth/login?returnUrl=/chat/book/${bookId}`);
+      router.push(`/auth/login?returnUrl=/chat?bookId=${bookId}`);
     } else {
-      router.push(`/chat/book/${bookId}`);
+      router.push(`/chat?bookId=${bookId}`);
     }
   };
 
   const handleCharacterChat = (characterId: string) => {
     if (!user) {
-      router.push(`/auth/login?returnUrl=/chat/book/${bookId}/character/${characterId}`);
+      router.push(`/auth/login?returnUrl=/chat?bookId=${bookId}&characterId=${characterId}`);
     } else {
-      router.push(`/chat/book/${bookId}/character/${characterId}`);
+      router.push(`/chat?bookId=${bookId}&characterId=${characterId}`);
     }
   };
 

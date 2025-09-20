@@ -185,7 +185,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       const token = api.getAuthToken()
       const ws = createWebSocketManager({
-        url: 'ws://localhost:8888/ws',
+        url: 'ws://localhost:8888',
         dialogueId: sessionId,
         token: token || undefined,
         reconnectAttempts: 5,

@@ -141,10 +141,12 @@ export function ChatSidebar({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">开始时间</span>
                 <span>
-                  {formatDistanceToNow(new Date(session.created_at), {
-                    addSuffix: true,
-                    locale: zhCN,
-                  })}
+                  {session.created_at && !isNaN(Date.parse(session.created_at))
+                    ? formatDistanceToNow(new Date(session.created_at), {
+                        addSuffix: true,
+                        locale: zhCN,
+                      })
+                    : '刚刚'}
                 </span>
               </div>
               {session.connectionStatus && (

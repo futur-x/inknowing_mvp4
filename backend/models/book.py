@@ -17,22 +17,23 @@ from sqlalchemy import (
     Text,
     ForeignKey,
 )
-from sqlalchemy.dialects.postgresql import UUID as PostgresUUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID as PostgresUUID, JSONB, ARRAY
 from sqlalchemy.orm import relationship
 
 from config.database import Base
 
 
 class BookType(str, enum.Enum):
-    AI_KNOWN = "ai_known"
-    VECTORIZED = "vectorized"
+    ai_known = "ai_known"
+    vectorized = "vectorized"
 
 
 class BookStatus(str, enum.Enum):
-    DRAFT = "draft"
-    PUBLISHED = "published"
-    REVIEW = "review"
-    OFFLINE = "offline"
+    draft = "draft"
+    processing = "processing"
+    published = "published"
+    offline = "offline"
+    review = "review"
 
 
 class Book(Base):
@@ -63,7 +64,7 @@ class Book(Base):
     )
     status = Column(
         Enum(BookStatus, name="book_status", create_type=False),
-        default=BookStatus.DRAFT,
+        default=BookStatus.draft,
     )
     source = Column(String(20), default="admin")
 
@@ -99,8 +100,9 @@ class Book(Base):
     vector_dimension = Column(Integer)
 
     # Tags
-    tags = Column(JSONB)
-    keywords = Column(JSONB)
+    # tags = Column(JSONB)  # TODO: Add this column to database
+    # keywords = Column(JSONB)  # TODO: Add this column to database
+    seo_keywords = Column(ARRAY(Text))  # Use existing seo_keywords column instead
 
     # Cost tracking
     total_api_cost = Column(Numeric(10, 4), default=0)

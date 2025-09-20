@@ -403,17 +403,17 @@ class AdminService:
             conditions = []
             if status and status != "all":
                 if status == "published":
-                    conditions.append(Book.status == BookStatus.PUBLISHED)
+                    conditions.append(Book.status == "published")
                 elif status == "draft":
-                    conditions.append(Book.status == BookStatus.DRAFT)
+                    conditions.append(Book.status == "draft")
                 elif status == "review":
-                    conditions.append(Book.status == BookStatus.REVIEW)
+                    conditions.append(Book.status == "review")
 
             if type and type != "all":
                 if type == "ai_known":
-                    conditions.append(Book.type == BookType.AI_KNOWN)
+                    conditions.append(Book.type == "ai_known")
                 elif type == "vectorized":
-                    conditions.append(Book.type == BookType.VECTORIZED)
+                    conditions.append(Book.type == "vectorized")
 
             if conditions:
                 stmt = stmt.where(and_(*conditions))
@@ -525,7 +525,7 @@ class AdminService:
                 cover_url=cover_url,
                 isbn=isbn,
                 tags=tags or [],
-                status=BookStatus.DRAFT,
+                status="draft",
                 created_by=admin.id,
                 source="admin"
             )
@@ -594,19 +594,19 @@ class AdminService:
 
             # Update based on action
             if action == "approve":
-                book.status = BookStatus.PUBLISHED
+                book.status = "published"
                 if hasattr(book, 'review_status'):
                     book.review_status = "approved"
                 if hasattr(book, 'reviewer_id'):
                     book.reviewer_id = admin.id
 
                 # Trigger vectorization if needed
-                if vectorize and book.type == BookType.VECTORIZED:
+                if vectorize and book.type == "vectorized":
                     # This would trigger the vectorization workflow
                     pass
 
             elif action == "reject":
-                book.status = BookStatus.REJECTED if hasattr(BookStatus, 'REJECTED') else BookStatus.DRAFT
+                book.status = "draft"  # Set to draft since rejected is not in enum
                 if hasattr(book, 'review_status'):
                     book.review_status = "rejected"
                 if hasattr(book, 'reviewer_id'):

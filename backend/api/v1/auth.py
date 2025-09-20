@@ -62,9 +62,13 @@ async def create_auth_response(user: User) -> AuthResponse:
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
+    # Create a WebSocket-specific token (same as access_token but for client-side storage)
+    ws_token = access_token  # For WebSocket connections
+
     return AuthResponse(
         access_token=access_token,
         refresh_token=refresh_token,
+        ws_token=ws_token,  # Add WebSocket token for client-side storage
         token_type="Bearer",
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         user=UserResponse.model_validate(user),

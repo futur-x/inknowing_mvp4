@@ -97,6 +97,7 @@ class UserResponse(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
+    ws_token: Optional[str] = Field(None, description="WebSocket-specific token for client-side storage")
     token_type: str = "Bearer"
     expires_in: int = Field(..., description="Token expiry time in seconds")
     user: UserResponse

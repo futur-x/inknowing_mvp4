@@ -161,8 +161,8 @@ async def get_dialogue_context(
                 session_id=session_id,
                 book_context={
                     "current_chapter": None,
-                    "discussed_topics": session.discussed_topics or [],
-                    "key_references": session.key_references or []
+                    "discussed_topics": [],
+                    "key_references": []
                 },
                 character_context=None
             )
@@ -171,16 +171,16 @@ async def get_dialogue_context(
         book_context = {
             "current_chapter": context.current_chapter,
             "discussed_topics": list(context.chapter_summaries.keys()) if context.chapter_summaries else [],
-            "key_references": session.key_references or []
+            "key_references": []
         }
 
         character_context = None
-        if session.character_id:
-            character_context = {
-                "character_state": session.character_state,
-                "emotional_tone": context.emotional_state,
-                "remembered_facts": context.character_memories
-            }
+        # if session.character_id:
+        #     character_context = {
+        #         "character_state": session.character_state,
+        #         "emotional_tone": context.emotional_state,
+        #         "remembered_facts": context.character_memories
+        #     }
 
         return DialogueContextResponse(
             session_id=session_id,
@@ -248,23 +248,23 @@ async def get_dialogue_history(
 
             # Get character name if character dialogue
             character_name = None
-            if session.character_id:
-                from models.book import BookCharacter
-                character = await db.get(BookCharacter, session.character_id)
-                character_name = character.name if character else None
+            # if session.character_id:
+            #     from models.book import BookCharacter
+            #     character = await db.get(BookCharacter, session.character_id)
+            #     character_name = character.name if character else None
 
             session_responses.append(DialogueSessionResponse(
-                id=session.id,
-                book_id=session.book_id,
+                id=str(session.id),
+                book_id=str(session.book_id),
                 book_title=book.title if book else "Unknown",
-                type=session.type.value,
-                character_id=session.character_id,
+                type=session.type,  # Already a string
+                character_id=None,  # Field removed from model
                 character_name=character_name,
-                user_id=session.user_id,
+                user_id=str(session.user_id),
                 message_count=session.message_count,
                 last_message_at=session.last_message_at,
                 created_at=session.created_at,
-                status=session.status.value
+                status=session.status  # Already a string
             ))
 
         return {
@@ -327,30 +327,55 @@ async def end_dialogue_session(
 async def dialogue_websocket(
     websocket: WebSocket,
     session_id: str,
-    token: str
+    token: str = None  # Token from query parameter
 ):
     """WebSocket connection for real-time dialogue"""
+    # Extract token from query parameters if not provided
+    if not token:
+        token = websocket.query_params.get("token")
+
     await websocket.accept()
 
     try:
         # Verify token and get user
-        from core.auth import verify_token
+        from core.security import verify_token
+
+        if not token:
+            logger.warning(f"WebSocket connection attempt without token for session {session_id}")
+            await websocket.send_json(WSError(message="Token required").dict())
+            await websocket.close(code=1008)
+            return
+
+        logger.debug(f"Verifying token for WebSocket connection to session {session_id}")
         payload = verify_token(token)
         if not payload:
+            logger.warning(f"Invalid token for WebSocket connection to session {session_id}")
             await websocket.send_json(WSError(message="Invalid token").dict())
             await websocket.close(code=1008)
             return
 
         user_id = payload.get("sub")
+        logger.info(f"User {user_id} connected to WebSocket for session {session_id}")
 
         # Get database session
         async for db in get_db():
             # Verify session ownership
+            logger.debug(f"Verifying session {session_id} ownership for user {user_id}")
             session = await db.get(DialogueSession, session_id)
-            if not session or session.user_id != user_id:
+
+            if not session:
+                logger.warning(f"Session {session_id} not found in database")
                 await websocket.send_json(WSError(message="Session not found").dict())
                 await websocket.close(code=1008)
                 return
+
+            if str(session.user_id) != str(user_id):
+                logger.warning(f"Session {session_id} belongs to user {session.user_id}, not {user_id}")
+                await websocket.send_json(WSError(message="Session access denied").dict())
+                await websocket.close(code=1008)
+                return
+
+            logger.info(f"Session {session_id} verified for user {user_id}")
 
             # Handle messages
             while True:
@@ -373,13 +398,15 @@ async def dialogue_websocket(
                         )
 
                         # Send response
-                        await websocket.send_json(
-                            WSAssistantMessage(
-                                content=response.content,
-                                references=response.references,
-                                timestamp=response.timestamp
-                            ).dict()
+                        ws_response = WSAssistantMessage(
+                            content=response.content,
+                            references=response.references if response.references else [],
+                            timestamp=response.timestamp
                         )
+                        # Use dict with datetime conversion
+                        response_dict = ws_response.dict()
+                        response_dict['timestamp'] = response_dict['timestamp'].isoformat() if response_dict.get('timestamp') else None
+                        await websocket.send_json(response_dict)
                     except Exception as e:
                         await websocket.send_json(
                             WSError(message=str(e)).dict()
@@ -393,12 +420,12 @@ async def dialogue_websocket(
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected for session {session_id}")
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
+        logger.error(f"WebSocket error for session {session_id}: {e}", exc_info=True)
         try:
-            await websocket.send_json(WSError(message=str(e)).dict())
+            await websocket.send_json(WSError(message=f"Server error: {str(e)}").dict())
+            await websocket.close(code=1011)  # Internal server error
         except:
-            pass
-        await websocket.close(code=1011)
+            pass  # Connection might already be closed
 
 
 @router.post("/{session_id}/stream")

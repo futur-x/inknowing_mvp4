@@ -1,0 +1,43 @@
+# AI Service Configuration for Testing
+# This configuration is used for dialogue flow integration testing
+
+ai_service:
+  base_url: "https://litellm.futurx.cc"
+  api_key: "sk-tptTrlFHR14EDpg"
+
+  models:
+    chat:
+      provider: "anthropic"
+      model: "claude-3-5-haiku-20241022"
+      temperature: 0.7
+      max_tokens: 4096
+
+    embedding:
+      provider: "azure"
+      model: "text-embedding-3-large"
+      dimensions: 3072
+
+# Test endpoints
+test_endpoints:
+  frontend: "http://localhost:3555"
+  backend: "http://localhost:8888"
+  websocket: "ws://localhost:8888/ws/dialogue"
+
+# Test account
+test_account:
+  phone: "13900000002"
+  password: "Test@123456"
+  username: "TestUser123"
+
+# Test data
+test_data:
+  book_id: "book-test-001"
+  character_ids:
+    - "char-1"
+    - "char-2"
+  test_messages:
+    - "这本书的核心思想是什么？"
+    - "能举个具体的例子吗？"
+    - "作者的写作风格如何？"
+    - "书中最打动你的观点是什么？"
+    - "这本书对现代社会有什么启示？"

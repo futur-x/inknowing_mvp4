@@ -118,8 +118,8 @@ class Admin(SQLModel, table=True):
     )
     created_by: Optional[str] = Field(default=None, foreign_key="auth.admins.id")
 
-    # Relationships
-    audit_logs: List["AuditLog"] = Relationship(back_populates="admin")
+    # Relationships - commented out to avoid initialization issues
+    # audit_logs: List["AuditLog"] = Relationship(back_populates="admin")
 
     def has_permission(self, permission: str) -> bool:
         """Check if admin has specific permission"""
@@ -231,8 +231,8 @@ class AuditLog(SQLModel, table=True):
     # Timestamp
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
 
-    # Relationships
-    admin: Optional[Admin] = Relationship(back_populates="audit_logs")
+    # Relationships - commented out to avoid initialization issues
+    # admin: Optional[Admin] = Relationship(back_populates="audit_logs")
 
 
 class SystemConfig(SQLModel, table=True):

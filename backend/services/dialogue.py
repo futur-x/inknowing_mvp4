@@ -4,7 +4,7 @@ Dialogue Service - Manages book and character dialogues
 import json
 from typing import Optional, List, Dict, Any, AsyncGenerator
 from datetime import datetime, timedelta
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 from sqlalchemy import select, and_, or_, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +30,7 @@ from schemas.dialogue import (
     DialogueContextResponse,
 )
 from schemas.ai_model import VectorSearchQuery
-from services.ai_model import ai_service
+from services.ai_litellm import ai_service  # Use simplified LiteLLM service
 from services.vector_db import vector_service
 from services.user import check_user_quota
 from core.logger import logger
@@ -55,21 +55,23 @@ class DialogueService:
                     detail="Dialogue quota exceeded"
                 )
 
-            # Get book
-            book = await db.get(Book, data.book_id)
+            # Get book by book_id string
+            stmt = select(Book).where(Book.book_id == data.book_id)
+            result = await db.execute(stmt)
+            book = result.scalar_one_or_none()
             if not book:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Book not found"
                 )
 
-            # Create dialogue session
+            # Create dialogue session (use book.id UUID, not book_id string)
             session = DialogueSession(
-                user_id=user_id,
-                book_id=data.book_id,
-                type=DialogueType.BOOK,
+                user_id=UUID(user_id) if isinstance(user_id, str) else user_id,
+                book_id=book.id,  # Use the UUID object directly
+                type="book",  # Use lowercase string value
                 initial_question=data.initial_question,
-                status=DialogueStatus.ACTIVE
+                status="active"  # Use lowercase string value
             )
 
             db.add(session)
@@ -86,17 +88,17 @@ class DialogueService:
                 )
 
             return DialogueSessionResponse(
-                id=session.id,
-                book_id=session.book_id,
+                id=str(session.id),
+                book_id=book.book_id,  # Return the string book_id for API
                 book_title=book.title,
                 type="book",
                 character_id=None,
                 character_name=None,
-                user_id=session.user_id,
+                user_id=str(session.user_id),
                 message_count=session.message_count,
                 last_message_at=session.last_message_at,
                 created_at=session.created_at,
-                status=session.status.value
+                status=session.status  # Already a string
             )
 
         except HTTPException:
@@ -124,29 +126,34 @@ class DialogueService:
                     detail="Dialogue quota exceeded"
                 )
 
-            # Get book and character
-            book = await db.get(Book, data.book_id)
+            # Get book by book_id string
+            stmt = select(Book).where(Book.book_id == data.book_id)
+            result = await db.execute(stmt)
+            book = result.scalar_one_or_none()
             if not book:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Book not found"
                 )
 
-            character = await db.get(BookCharacter, data.character_id)
-            if not character or character.book_id != data.book_id:
+            # Get character by character_id string
+            stmt = select(BookCharacter).where(BookCharacter.character_id == data.character_id)
+            result = await db.execute(stmt)
+            character = result.scalar_one_or_none()
+            if not character or character.book_id != book.id:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Character not found"
                 )
 
-            # Create dialogue session
+            # Create dialogue session (use UUIDs from database objects)
             session = DialogueSession(
-                user_id=user_id,
-                book_id=data.book_id,
-                type=DialogueType.CHARACTER,
-                character_id=data.character_id,
+                user_id=UUID(user_id) if isinstance(user_id, str) else user_id,
+                book_id=book.id,  # Use the UUID object directly
+                type="character",  # Use lowercase string value
+                # character_id=character.id,  # Commented out - field doesn't exist yet
                 initial_question=data.initial_message,
-                status=DialogueStatus.ACTIVE
+                status="active"  # Use lowercase string value
             )
 
             db.add(session)
@@ -163,17 +170,17 @@ class DialogueService:
                 )
 
             return DialogueSessionResponse(
-                id=session.id,
-                book_id=session.book_id,
+                id=str(session.id),
+                book_id=book.book_id,  # Return the string book_id for API
                 book_title=book.title,
                 type="character",
-                character_id=session.character_id,
+                character_id=character.character_id,  # Return the string character_id for API
                 character_name=character.name,
-                user_id=session.user_id,
+                user_id=str(session.user_id),
                 message_count=session.message_count,
                 last_message_at=session.last_message_at,
                 created_at=session.created_at,
-                status=session.status.value
+                status=session.status  # Already a string
             )
 
         except HTTPException:
@@ -196,13 +203,13 @@ class DialogueService:
         try:
             # Get session
             session = await db.get(DialogueSession, session_id)
-            if not session or session.user_id != user_id:
+            if not session or str(session.user_id) != str(user_id):
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Dialogue session not found"
                 )
 
-            if session.status != DialogueStatus.ACTIVE:
+            if session.status != "active":  # Use lowercase string value
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Dialogue session is not active"
@@ -217,38 +224,60 @@ class DialogueService:
                 )
 
             # Save user message
+            logger.info(f"Creating user message for session {session_id}")
             user_msg = DialogueMessage(
-                session_id=session_id,
-                role=MessageRole.USER,
+                session_id=UUID(session_id) if isinstance(session_id, str) else session_id,
+                message_id=str(uuid4()),
+                role="user",  # Use lowercase string value
                 content=message.message,
-                model_used="user"
+                content_type="text",
+                model_used="user",
+                tokens_used=0
             )
             db.add(user_msg)
 
+            # Flush to check for errors before continuing
+            try:
+                await db.flush()
+                logger.info("User message saved successfully")
+            except Exception as e:
+                logger.error(f"Failed to save user message: {e}")
+                logger.error(f"User message data: session_id={session_id}, role=user, content={message.message[:50]}...")
+                raise
+
             # Get context
+            logger.info("Getting dialogue context")
             context = await self._get_dialogue_context(db, session)
 
             # Generate AI response
+            logger.info("Generating AI response")
             ai_response = await self._generate_response(
                 db=db,
                 session=session,
                 user_message=message.message,
                 context=context
             )
+            logger.info(f"AI response generated: {len(ai_response.get('content', ''))} chars")
 
             # Save AI message
+            logger.info("Creating AI message")
+
+            # Extract first reference if available
+            references = ai_response.get("references", [])
+            reference = references[0] if references else None
+
             ai_msg = DialogueMessage(
-                session_id=session_id,
-                role=MessageRole.ASSISTANT,
+                session_id=UUID(session_id) if isinstance(session_id, str) else session_id,
+                message_id=str(uuid4()),
+                role="assistant",  # Use lowercase string value
                 content=ai_response["content"],
-                references=ai_response.get("references", []),
-                context_used=context.get("context_string"),
-                vector_search_results=ai_response.get("search_results"),
+                content_type="text",
+                reference_type=reference.get("type") if reference else None,
+                reference_id=reference.get("id") if reference else None,
+                reference_text=reference.get("text") if reference else None,
+                reference_metadata=references if references else None,  # Store all references as metadata
                 model_used=ai_response["model"],
-                model_parameters=ai_response.get("parameters", {}),
-                input_tokens=ai_response["usage"]["input_tokens"],
-                output_tokens=ai_response["usage"]["output_tokens"],
-                cost=ai_response["usage"]["cost"],
+                tokens_used=ai_response["usage"]["input_tokens"] + ai_response["usage"]["output_tokens"],
                 response_time_ms=ai_response.get("latency_ms")
             )
             db.add(ai_msg)
@@ -266,21 +295,26 @@ class DialogueService:
             await db.commit()
             await db.refresh(ai_msg)
 
+            # Reconstruct references for response
+            response_references = ai_msg.reference_metadata if ai_msg.reference_metadata else []
+
             return DialogueMessageResponse(
-                id=ai_msg.id,
-                session_id=ai_msg.session_id,
-                role=ai_msg.role.value,
+                id=str(ai_msg.id),  # Convert UUID to string
+                session_id=str(ai_msg.session_id),  # Convert UUID to string
+                role=ai_msg.role,  # Already a string
                 content=ai_msg.content,
-                references=ai_msg.references,
+                references=response_references,
                 timestamp=ai_msg.created_at,
-                tokens_used=ai_msg.input_tokens + ai_msg.output_tokens,
+                tokens_used=ai_msg.tokens_used or 0,
                 model_used=ai_msg.model_used
             )
 
         except HTTPException:
+            await db.rollback()  # Rollback on HTTP exceptions
             raise
         except Exception as e:
             logger.error(f"Failed to send message: {e}")
+            await db.rollback()  # Rollback on any other exceptions
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to send message: {str(e)}"
@@ -307,30 +341,37 @@ class DialogueService:
             conversation = []
             for msg in reversed(recent_messages):
                 conversation.append({
-                    "role": msg.role.value,
+                    "role": msg.role,  # Already a string
                     "content": msg.content
                 })
 
             context["conversation"] = conversation
 
-            # Get book information
+            # Get book information (session.book_id is UUID)
             book = await db.get(Book, session.book_id)
-            context["book"] = {
-                "title": book.title,
-                "author": book.author,
-                "description": book.description,
-                "category": book.category
-            }
+            if book:
+                context["book"] = {
+                    "title": book.title,
+                    "author": book.author,
+                    "description": book.description or "",
+                    "category": book.category or ""
+                }
+            else:
+                # Fallback if book not found
+                context["book"] = {
+                    "title": "Unknown Book",
+                    "author": "Unknown Author",
+                    "description": "",
+                    "category": ""
+                }
 
             # For character dialogues, get character information
-            if session.type == DialogueType.CHARACTER and session.character_id:
-                character = await db.get(BookCharacter, session.character_id)
-                context["character"] = {
-                    "name": character.name,
-                    "description": character.description,
-                    "personality": character.personality,
-                    "personality_prompt": character.personality_prompt
-                }
+            # Note: character_id field doesn't exist in DialogueSession yet
+            # This is placeholder for future implementation
+            if session.type == "character":  # Use string comparison
+                # TODO: Add character_id field to DialogueSession model
+                # For now, we'll skip character-specific context
+                pass
 
             # Get stored context if exists
             stmt = select(DialogueContext).where(
@@ -341,17 +382,18 @@ class DialogueService:
 
             if stored_context:
                 context["stored"] = {
-                    "full_context": stored_context.full_context,
-                    "current_chapter": stored_context.current_chapter,
-                    "character_memories": stored_context.character_memories,
-                    "emotional_state": stored_context.emotional_state
+                    "context_messages": stored_context.context_messages,
+                    "conversation_summary": stored_context.conversation_summary,
+                    "key_topics": stored_context.key_topics,
+                    "key_entities": stored_context.key_entities
                 }
 
             # Build context string
-            context_parts = [f"Book: {book.title} by {book.author}"]
+            context_parts = [f"Book: {context['book']['title']} by {context['book']['author']}"]
 
-            if session.type == DialogueType.CHARACTER:
-                context_parts.append(f"Character: {context['character']['name']}")
+            if session.type == "character":  # Use string comparison
+                if "character" in context:
+                    context_parts.append(f"Character: {context['character']['name']}")
 
             if conversation:
                 context_parts.append("Recent conversation:")
@@ -377,7 +419,7 @@ class DialogueService:
         """Generate AI response for dialogue"""
         try:
             # Prepare messages based on dialogue type
-            if session.type == DialogueType.BOOK:
+            if session.type == "book":  # Use string comparison
                 messages = await self._prepare_book_dialogue_messages(
                     user_message, context
                 )
@@ -393,7 +435,7 @@ class DialogueService:
             if book.type == "vectorized":
                 search_query = VectorSearchQuery(
                     query=user_message,
-                    book_id=session.book_id,
+                    book_id=book.book_id,  # Use the string book_id for vector search
                     top_k=5,
                     threshold=0.7
                 )
@@ -414,10 +456,10 @@ class DialogueService:
 
             response = await ai_service.chat_completion(
                 messages=messages,
-                user_id=session.user_id,
-                session_id=session.id,
-                feature="dialogue" if session.type == DialogueType.BOOK else "character_dialogue",
-                temperature=0.7 if session.type == DialogueType.BOOK else 0.9
+                user_id=str(session.user_id),  # Convert UUID to string
+                session_id=str(session.id),  # Convert UUID to string
+                feature="dialogue" if session.type == "book" else "character_dialogue",
+                temperature=0.7 if session.type == "book" else 0.9
             )
 
             latency_ms = int((time.time() - start_time) * 1000)
@@ -631,14 +673,17 @@ Stay in character at all times. Respond as {character.get('name')} would, consid
             # Convert to response format
             message_responses = []
             for msg in reversed(messages):  # Show in chronological order
+                # Reconstruct references for response
+                msg_references = msg.reference_metadata if msg.reference_metadata else []
+
                 message_responses.append(DialogueMessageResponse(
-                    id=msg.id,
-                    session_id=msg.session_id,
-                    role=msg.role.value,
+                    id=str(msg.id),  # Convert UUID to string
+                    session_id=str(msg.session_id),  # Convert UUID to string
+                    role=msg.role,  # Already a string
                     content=msg.content,
-                    references=msg.references,
+                    references=msg_references,
                     timestamp=msg.created_at,
-                    tokens_used=msg.input_tokens + msg.output_tokens,
+                    tokens_used=msg.tokens_used or 0,
                     model_used=msg.model_used
                 ))
 

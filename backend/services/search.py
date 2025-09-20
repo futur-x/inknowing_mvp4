@@ -79,7 +79,7 @@ class SearchService:
         if not title or not title.strip():
             raise BadRequestException("Title cannot be empty")
 
-        query = select(Book).where(Book.status == BookStatus.PUBLISHED)
+        query = select(Book).where(Book.status == "published")
 
         if exact:
             # Exact title match (case-insensitive)
@@ -174,7 +174,7 @@ class SearchService:
         # Base query for published books
         base_query = select(Book).where(
             and_(
-                Book.status == BookStatus.PUBLISHED,
+                Book.status == "published",
                 or_(*conditions)
             )
         )
@@ -216,7 +216,7 @@ class SearchService:
         # Base query for published books
         base_query = select(Book).where(
             and_(
-                Book.status == BookStatus.PUBLISHED,
+                Book.status == "published",
                 Book.title.ilike(f"%{query}%")
             )
         )
@@ -253,7 +253,7 @@ class SearchService:
         # Base query for published books
         base_query = select(Book).where(
             and_(
-                Book.status == BookStatus.PUBLISHED,
+                Book.status == "published",
                 Book.author.ilike(f"%{query}%")
             )
         )

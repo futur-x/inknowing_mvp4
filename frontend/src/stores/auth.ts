@@ -175,6 +175,11 @@ export const useAuthStore = create<AuthState>(
       setAuth: (authData: AuthResponse) => {
         // Tokens are now stored in httponly cookies
         // We only store user info in state
+        // Store WebSocket token in sessionStorage for WebSocket connections
+        if (authData.ws_token && typeof window !== 'undefined') {
+          sessionStorage.setItem('ws_token', authData.ws_token)
+        }
+
         set({
           user: authData.user,
           token: null, // Token is in cookie, not in state
@@ -186,6 +191,11 @@ export const useAuthStore = create<AuthState>(
       },
 
       clearAuth: () => {
+        // Clear WebSocket token from sessionStorage
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('ws_token')
+        }
+
         set({
           user: null,
           token: null,

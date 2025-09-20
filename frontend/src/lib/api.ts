@@ -16,9 +16,12 @@ export class ApiClient {
     this.retries = 3
   }
 
-  // Get authentication token - no longer needed with cookies
+  // Get authentication token - needed for WebSocket
   public getAuthToken(): string | null {
-    // Cookies are automatically sent, no need to get token manually
+    // For WebSocket connections, use the ws_token stored in sessionStorage
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('ws_token')
+    }
     return null
   }
 

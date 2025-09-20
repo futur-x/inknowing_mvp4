@@ -74,7 +74,8 @@ export function BookCard({
 
   const handleStartChat = (e: React.MouseEvent) => {
     e.stopPropagation();
-    router.push(`/chat/book/${book.id}`);
+    // Navigate to chat page where a new session will be created for this book
+    router.push(`/chat?bookId=${book.id}`);
   };
 
   const handleQuickView = (e: React.MouseEvent) => {

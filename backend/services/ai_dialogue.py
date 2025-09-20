@@ -6,13 +6,12 @@ from datetime import datetime
 import asyncio
 import json
 import os
-from openai import AsyncOpenAI
-import anthropic
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.dialogue import DialogueSession, DialogueMessage, DialogueType
 from models.book import Book, BookCharacter, BookType
 from config.settings import settings
+from services.litellm_service import get_litellm_service
 
 
 class AIDialogueService:
@@ -20,10 +19,10 @@ class AIDialogueService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        # Initialize AI clients
-        self.openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY) if hasattr(settings, 'OPENAI_API_KEY') else None
-        self.anthropic_client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY) if hasattr(settings, 'ANTHROPIC_API_KEY') else None
-        self.default_model = getattr(settings, 'DEFAULT_AI_MODEL', 'gpt-4')
+        # Initialize LiteLLM service
+        self.litellm = get_litellm_service()
+        # Backward compatibility
+        self.default_model = self.litellm.chat_model
 
     async def process_dialogue(
         self,
@@ -265,26 +264,17 @@ Focus on thoroughly addressing this question and related topics. Provide compreh
             messages.extend(history)
             messages.append({"role": "user", "content": user_message})
 
-            # Query AI (using OpenAI as example)
-            if self.openai_client:
-                response = await self.openai_client.chat.completions.create(
-                    model=self.default_model,
-                    messages=messages,
-                    temperature=0.7,
-                    max_tokens=1000
-                )
+            # Query AI using LiteLLM
+            response = await self.litellm.chat_completion(
+                messages=messages,
+                temperature=0.7,
+                max_tokens=1000
+            )
 
-                content = response.choices[0].message.content
-                input_tokens = response.usage.prompt_tokens
-                output_tokens = response.usage.completion_tokens
-                model_used = response.model
-
-            else:
-                # Fallback mock response
-                content = f"I understand you're asking about: {user_message[:100]}... Let me help you explore this topic."
-                input_tokens = len(user_message.split())
-                output_tokens = len(content.split())
-                model_used = "mock"
+            content = response.choices[0].message.content
+            input_tokens = response.usage.prompt_tokens if response.usage else 0
+            output_tokens = response.usage.completion_tokens if response.usage else 0
+            model_used = self.litellm.chat_model
 
             # Extract book references if present
             references = await self._extract_references(content, context)
@@ -345,59 +335,43 @@ Focus on thoroughly addressing this question and related topics. Provide compreh
             messages.extend(history)
             messages.append({"role": "user", "content": user_message})
 
-            if self.openai_client:
-                # Stream from OpenAI
-                stream = await self.openai_client.chat.completions.create(
-                    model=self.default_model,
-                    messages=messages,
-                    temperature=0.7,
-                    max_tokens=1000,
-                    stream=True
-                )
+            # Stream from LiteLLM
+            stream = await self.litellm.chat_completion(
+                messages=messages,
+                temperature=0.7,
+                max_tokens=1000,
+                stream=True
+            )
 
-                full_content = ""
-                async for chunk in stream:
-                    if chunk.choices[0].delta.content:
-                        content = chunk.choices[0].delta.content
-                        full_content += content
-                        yield {
-                            "type": "content",
-                            "content": content
-                        }
-
-                # Extract references from full content
-                references = await self._extract_references(full_content, context)
-                for ref in references:
-                    yield {
-                        "type": "reference",
-                        "reference": ref
-                    }
-
-                # Send metadata
-                yield {
-                    "type": "metadata",
-                    "tokens": {
-                        "input": len(" ".join([m["content"] for m in messages]).split()),
-                        "output": len(full_content.split())
-                    }
-                }
-
-            else:
-                # Mock streaming
-                mock_response = "This is a simulated streaming response. "
-                words = mock_response.split()
-
-                for word in words:
-                    await asyncio.sleep(0.05)
+            full_content = ""
+            async for chunk in stream:
+                if chunk.get("type") == "content":
+                    content = chunk["content"]
+                    full_content += content
                     yield {
                         "type": "content",
-                        "content": word + " "
+                        "content": content
                     }
+                elif chunk.get("type") == "error":
+                    yield chunk
+                    return
 
+            # Extract references from full content
+            references = await self._extract_references(full_content, context)
+            for ref in references:
                 yield {
-                    "type": "metadata",
-                    "tokens": {"input": 10, "output": len(words)}
+                    "type": "reference",
+                    "reference": ref
                 }
+
+            # Send metadata
+            yield {
+                "type": "metadata",
+                "tokens": {
+                    "input": len(" ".join([m["content"] for m in messages]).split()),
+                    "output": len(full_content.split())
+                }
+            }
 
             # Send end signal
             yield {"type": "end"}

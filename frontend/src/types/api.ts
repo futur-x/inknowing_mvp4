@@ -5,6 +5,7 @@
 export interface AuthResponse {
   access_token: string
   refresh_token: string
+  ws_token?: string  // WebSocket-specific token for client-side storage
   token_type: string
   expires_in: number
   user: User

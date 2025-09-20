@@ -341,7 +341,8 @@ export class WebSocketManagerImpl implements WebSocketManager {
   private buildWebSocketUrl(): string {
     const { url, dialogueId, token } = this.config
     const baseUrl = url.replace(/^http/, 'ws')
-    const wsUrl = `${baseUrl}/dialogue/${dialogueId}`
+    // Backend expects /v1/dialogues/ws/{session_id}
+    const wsUrl = `${baseUrl.replace(/\/ws$/, '')}/v1/dialogues/ws/${dialogueId}`
 
     if (token) {
       return `${wsUrl}?token=${encodeURIComponent(token)}`

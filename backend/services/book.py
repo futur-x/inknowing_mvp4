@@ -27,8 +27,8 @@ class BookService:
         limit: int = 20,
     ) -> Dict[str, Any]:
         """Get paginated list of available books"""
-        # Base query - only published books
-        query = select(Book).where(Book.status == BookStatus.PUBLISHED)
+        # Base query - only published books (use string literal for enum)
+        query = select(Book).where(Book.status == "published")
 
         # Apply category filter
         if category:
@@ -71,9 +71,9 @@ class BookService:
 
     async def get_book_detail(self, book_id: str) -> Dict[str, Any]:
         """Get detailed book information"""
-        # Query book with characters
+        # Query book with characters - use book_id field and string literal
         query = select(Book).where(
-            Book.id == book_id, Book.status == BookStatus.PUBLISHED
+            Book.book_id == book_id, Book.status == "published"
         )
         result = await self.db.execute(query)
         book = result.scalar_one_or_none()
@@ -106,9 +106,9 @@ class BookService:
 
     async def get_book_characters(self, book_id: str) -> List[Dict[str, Any]]:
         """Get list of available dialogue characters for a book"""
-        # Verify book exists and is published
+        # Verify book exists and is published - use book_id field and string literal
         book_query = select(Book).where(
-            Book.id == book_id, Book.status == BookStatus.PUBLISHED
+            Book.book_id == book_id, Book.status == "published"
         )
         book_result = await self.db.execute(book_query)
         book = book_result.scalar_one_or_none()
@@ -142,8 +142,8 @@ class BookService:
         else:  # all
             start_date = None
 
-        # Base query for published books
-        query = select(Book).where(Book.status == BookStatus.PUBLISHED)
+        # Base query for published books (use string literal)
+        query = select(Book).where(Book.status == "published")
 
         # If period specified, join with dialogue sessions to count recent dialogues
         if start_date:
@@ -187,7 +187,7 @@ class BookService:
     def _format_book(self, book: Book) -> Dict[str, Any]:
         """Format basic book response"""
         return {
-            "id": str(book.id),
+            "id": book.book_id,  # Use book_id instead of UUID id
             "title": book.title,
             "author": book.author,
             "cover": book.cover_url,
@@ -207,7 +207,7 @@ class BookService:
                 "chapters": book.chapters,
                 "estimated_reading_time": book.estimated_reading_time,
                 "characters": [],  # Will be filled separately
-                "tags": book.tags if book.tags else [],
+                "tags": book.seo_keywords if hasattr(book, 'seo_keywords') and book.seo_keywords else [],
                 "uploader": None,  # Will be filled if applicable
             }
         )

@@ -38,32 +38,17 @@ async def list_books(
     - **limit**: Items per page (max 50)
     - **minRating**: Minimum rating filter
     """
-    # Return mock data for testing CORS
-    mock_books = []
-    for i in range(min(limit, 8)):
-        mock_books.append({
-            "id": f"book-{i+1}",
-            "title": f"Sample Book {i+1}",
-            "author": f"Author {i+1}",
-            "cover": f"/mock-cover-{i+1}.jpg",
-            "category": "business",
-            "description": f"This is a sample description for book {i+1}",
-            "dialogue_count": 100 + i * 10,
-            "rating": 4.5 - (i * 0.1),
-            "created_at": "2024-01-01T00:00:00Z"
-        })
+    # Use real BookService to get data from database
+    book_service = BookService(db)
+    result = await book_service.list_books(
+        category=category.value if category else None,
+        sort=sort,
+        page=page,
+        limit=limit
+    )
 
-    return {
-        "books": mock_books,
-        "pagination": {
-            "page": page,
-            "limit": limit,
-            "total": 100,
-            "total_pages": 5,
-            "has_next": page < 5,
-            "has_prev": page > 1
-        }
-    }
+    # Return the actual database results
+    return result
 
 
 @router.get("/books/popular")
@@ -197,57 +182,11 @@ async def get_book_detail(
     - Reading time estimate
     - Tags and metadata
     """
-    # Return mock data for testing
-    mock_book = {
-        "id": book_id,
-        "title": f"Sample Book {book_id[-1]}",
-        "author": f"Author {book_id[-1]}",
-        "cover": f"/mock-cover-{book_id[-1]}.jpg",
-        "category": "business",
-        "description": f"This is a detailed description for {book_id}. It contains comprehensive information about the book's content, themes, and key takeaways.",
-        "dialogue_count": 100 + int(book_id[-1]) * 10 if book_id[-1].isdigit() else 100,
-        "rating": 4.5,
-        "rating_count": 42,
-        "created_at": "2024-01-01T00:00:00Z",
-        "updated_at": "2024-01-15T00:00:00Z",
-        "type": "vectorized",  # Added required field
-        "difficulty": "intermediate",
-        "language": "中文",
-        "page_count": 350,
-        "isbn": "978-1234567890",
-        "publisher": "Sample Publisher",
-        "publication_year": 2023,
-        "chapters": 12,
-        "estimated_reading_time": 240,
-        "tags": ["business", "strategy", "leadership"],
-        "upload_source": "admin",
-        "vectorized": True,
-        "vector_model": "text-embedding-ada-002",
-        "vector_dimension": 1536,
-        "status": "published",
-        "characters": [
-            {
-                "id": f"char-1-{book_id}",
-                "name": "主要角色",
-                "description": "书籍的主要讲述者",
-                "avatar": "/avatars/char1.png",
-                "role": "narrator"
-            },
-            {
-                "id": f"char-2-{book_id}",
-                "name": "专家角色",
-                "description": "领域专家，提供深度见解",
-                "avatar": "/avatars/char2.png",
-                "role": "expert"
-            }
-        ],
-        "uploader": {
-            "id": "admin-user",
-            "nickname": "System Admin"
-        }
-    }
+    # Use real BookService to get data from database
+    book_service = BookService(db)
+    result = await book_service.get_book_detail(book_id)
 
-    return BookDetail(**mock_book)
+    return BookDetail(**result)
 
 
 @router.get("/books/{book_id}/characters")
