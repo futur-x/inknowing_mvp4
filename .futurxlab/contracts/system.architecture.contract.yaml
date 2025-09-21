@@ -1,0 +1,305 @@
+# InKnowing MVP 4.0 - System Architecture Contract
+# Contract-Driven Development (CDD) - 系统架构契约
+# Version: 1.0.0
+# Generated: 2025-09-21
+# Purpose: Define and enforce system-wide architecture standards
+
+contract:
+  version: "1.0.0"
+  name: "InKnowing System Architecture"
+  type: "architecture"
+
+# ================================
+# 1. System Overview
+# ================================
+system:
+  name: "InKnowing AI Book Dialogue Platform"
+  description: "AI-powered book dialogue platform for question-driven and book-driven discovery"
+  environment:
+    production:
+      frontend_url: "https://inknowing.com"
+      backend_url: "https://api.inknowing.com"
+    development:
+      frontend_url: "http://localhost:3555"
+      backend_url: "http://localhost:8888"
+
+# ================================
+# 2. Technology Stack
+# ================================
+technology:
+  frontend:
+    framework: "Next.js 15.5.3"
+    runtime: "React 19.1.0"
+    language: "TypeScript 5.x"
+    ui_library: "Radix UI + Tailwind CSS"
+    state_management: "Zustand 5.0.8"
+    api_client: "Custom fetch wrapper"
+    realtime: "WebSocket (native)"
+
+  backend:
+    framework: "FastAPI"
+    language: "Python 3.x"
+    orm: "SQLAlchemy"
+    database: "PostgreSQL"
+    cache: "Redis"
+    vector_db: "ChromaDB/Pinecone"
+    queue: "RabbitMQ/Kafka"
+
+  infrastructure:
+    hosting: "Cloud (AWS/Aliyun)"
+    cdn: "CloudFlare/Aliyun CDN"
+    storage: "S3/OSS"
+    monitoring: "Prometheus/Grafana"
+
+# ================================
+# 3. Service Architecture
+# ================================
+services:
+  api_gateway:
+    type: "nginx/kong"
+    responsibilities:
+      - "Request routing"
+      - "Rate limiting"
+      - "SSL termination"
+      - "Load balancing"
+
+  core_services:
+    auth_service:
+      path: "/v1/auth"
+      responsibilities: ["Authentication", "JWT management", "Session handling"]
+
+    user_service:
+      path: "/v1/users"
+      responsibilities: ["Profile management", "Membership", "Quota tracking"]
+
+    book_service:
+      path: "/v1/books"
+      responsibilities: ["Book catalog", "Character management", "Metadata"]
+
+    dialogue_service:
+      path: "/v1/dialogues"
+      responsibilities: ["Chat sessions", "AI interaction", "Context management"]
+
+    search_service:
+      path: "/v1/search"
+      responsibilities: ["Semantic search", "Discovery", "Recommendations"]
+
+    upload_service:
+      path: "/v1/uploads"
+      responsibilities: ["File processing", "Vectorization", "Storage"]
+
+    payment_service:
+      path: "/v1/payment"
+      responsibilities: ["Order management", "Payment processing", "Webhooks"]
+
+  websocket_service:
+    path: "/ws"
+    responsibilities: ["Real-time communication", "Dialogue streaming", "Connection management"]
+
+# ================================
+# 4. Data Flow Architecture
+# ================================
+data_flow:
+  authentication_flow:
+    sequence:
+      - "Client → API Gateway"
+      - "API Gateway → Auth Middleware"
+      - "Auth Middleware → Validate JWT"
+      - "JWT Valid → Process Request"
+      - "JWT Invalid → Refresh Token"
+
+  dialogue_flow:
+    sequence:
+      - "User sends message"
+      - "WebSocket → Dialogue Service"
+      - "Dialogue Service → AI Model"
+      - "AI Model → Stream Response"
+      - "WebSocket → Client (real-time)"
+
+  upload_flow:
+    sequence:
+      - "User uploads file"
+      - "Upload Service → Queue job"
+      - "Background → Process file"
+      - "AI → Vectorization"
+      - "Vector DB → Store embeddings"
+
+# ================================
+# 5. Communication Patterns
+# ================================
+communication:
+  patterns:
+    synchronous:
+      protocol: "HTTP/REST"
+      use_cases: ["CRUD operations", "Authentication", "Profile queries"]
+
+    asynchronous:
+      protocol: "Message Queue"
+      use_cases: ["File processing", "Email notifications", "Analytics"]
+
+    realtime:
+      protocol: "WebSocket"
+      use_cases: ["Chat dialogues", "Live updates", "Status notifications"]
+
+    event_driven:
+      protocol: "Event Bus"
+      use_cases: ["State sync", "Cross-service updates", "Audit logging"]
+
+# ================================
+# 6. Security Architecture
+# ================================
+security:
+  authentication:
+    method: "JWT + Cookie"
+    token_storage: "httpOnly secure cookie"
+    refresh_mechanism: "Automatic with refresh token"
+
+  authorization:
+    model: "Role-Based Access Control (RBAC)"
+    roles: ["guest", "user", "premium", "admin"]
+
+  data_protection:
+    encryption_at_rest: true
+    encryption_in_transit: true
+    pii_handling: "Anonymization + Encryption"
+
+  api_security:
+    rate_limiting: true
+    cors_enabled: true
+    csrf_protection: true
+    input_validation: true
+
+# ================================
+# 7. Performance Architecture
+# ================================
+performance:
+  caching:
+    strategy: "Multi-layer"
+    layers:
+      - "Browser cache"
+      - "CDN cache"
+      - "Redis cache"
+      - "Database query cache"
+
+  optimization:
+    frontend:
+      - "Code splitting"
+      - "Lazy loading"
+      - "Image optimization"
+      - "Bundle optimization"
+
+    backend:
+      - "Connection pooling"
+      - "Query optimization"
+      - "Async processing"
+      - "Response compression"
+
+  scaling:
+    horizontal: true
+    auto_scaling: true
+    load_balancing: "Round-robin"
+
+# ================================
+# 8. Deployment Architecture
+# ================================
+deployment:
+  environments:
+    - development
+    - staging
+    - production
+
+  strategy:
+    type: "Blue-Green"
+    rollback: "Automatic on failure"
+
+  containerization:
+    frontend: "Docker"
+    backend: "Docker"
+    orchestration: "Kubernetes/Docker Compose"
+
+  ci_cd:
+    pipeline: "GitLab CI/GitHub Actions"
+    stages: ["Build", "Test", "Deploy"]
+
+# ================================
+# 9. Monitoring Architecture
+# ================================
+monitoring:
+  logging:
+    service: "ELK Stack/CloudWatch"
+    levels: ["ERROR", "WARN", "INFO", "DEBUG"]
+
+  metrics:
+    service: "Prometheus + Grafana"
+    key_metrics:
+      - "API response time"
+      - "Error rate"
+      - "Active users"
+      - "System resources"
+
+  alerting:
+    service: "PagerDuty/CloudWatch"
+    channels: ["Email", "SMS", "Slack"]
+
+  health_checks:
+    endpoints:
+      - "/health"
+      - "/ready"
+      - "/live"
+
+# ================================
+# 10. Integration Architecture
+# ================================
+integrations:
+  ai_providers:
+    - provider: "OpenAI"
+      models: ["GPT-4", "GPT-3.5"]
+    - provider: "Anthropic"
+      models: ["Claude"]
+    - provider: "Local"
+      models: ["Qwen", "Baidu"]
+
+  payment_providers:
+    - provider: "WeChat Pay"
+      sandbox: true
+    - provider: "Alipay"
+      sandbox: true
+    - provider: "Stripe"
+      sandbox: true
+
+  storage_providers:
+    - provider: "AWS S3"
+      region: "us-west-2"
+    - provider: "Aliyun OSS"
+      region: "cn-hangzhou"
+
+  notification_providers:
+    - provider: "SMS Gateway"
+      type: "Aliyun SMS"
+    - provider: "Email"
+      type: "SendGrid/SES"
+
+# ================================
+# Contract Validation Rules
+# ================================
+validation_rules:
+  architecture:
+    - id: "ARCH001"
+      rule: "All services must follow RESTful principles"
+      severity: "ERROR"
+
+    - id: "ARCH002"
+      rule: "WebSocket connections must use authentication"
+      severity: "ERROR"
+
+    - id: "ARCH003"
+      rule: "All API responses must follow standard format"
+      severity: "ERROR"
+
+    - id: "ARCH004"
+      rule: "Services must implement health checks"
+      severity: "WARNING"
+
+    - id: "ARCH005"
+      rule: "All data must be validated before processing"
+      severity: "ERROR"

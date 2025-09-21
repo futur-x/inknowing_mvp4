@@ -67,6 +67,12 @@ export default function ChatIndexPage() {
   };
 
   const handleStartBookChat = async (bookId: string) => {
+    // Check if user is authenticated first
+    if (!isAuthenticated) {
+      router.push(`/auth/login?redirect=/chat?bookId=${bookId}`);
+      return;
+    }
+
     try {
       setCreatingSession(bookId);
 
@@ -75,15 +81,29 @@ export default function ChatIndexPage() {
 
       // Navigate to the chat page with the new session
       router.push(`/chat/book/${sessionId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create chat session:', error);
-      alert('创建对话失败，请稍后重试');
+
+      // Check if it's an authentication error
+      if (error?.message?.includes('401') || error?.message?.includes('Authentication') || error?.message?.includes('Unauthorized')) {
+        router.push(`/auth/login?redirect=/chat?bookId=${bookId}`);
+      } else if (error?.message === 'QUOTA_EXCEEDED') {
+        alert('您的对话额度已用完，请升级会员继续使用');
+      } else {
+        alert('创建对话失败，请稍后重试');
+      }
     } finally {
       setCreatingSession(null);
     }
   };
 
   const handleStartCharacterChat = async (bookId: string, characterId: string) => {
+    // Check if user is authenticated first
+    if (!isAuthenticated) {
+      router.push(`/auth/login?redirect=/chat?bookId=${bookId}&characterId=${characterId}`);
+      return;
+    }
+
     try {
       setCreatingSession(`${bookId}-${characterId}`);
 
@@ -92,9 +112,17 @@ export default function ChatIndexPage() {
 
       // Navigate to the chat page with the new session
       router.push(`/chat/character/${sessionId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create character chat session:', error);
-      alert('创建角色对话失败，请稍后重试');
+
+      // Check if it's an authentication error
+      if (error?.message?.includes('401') || error?.message?.includes('Authentication') || error?.message?.includes('Unauthorized')) {
+        router.push(`/auth/login?redirect=/chat?bookId=${bookId}&characterId=${characterId}`);
+      } else if (error?.message === 'QUOTA_EXCEEDED') {
+        alert('您的对话额度已用完，请升级会员继续使用');
+      } else {
+        alert('创建角色对话失败，请稍后重试');
+      }
     } finally {
       setCreatingSession(null);
     }

@@ -20,12 +20,26 @@ export default function BookDialoguePage() {
   const [error, setError] = useState<string | null>(null)
 
   const { isAuthenticated } = useAuthStore()
-  const { activeSessions, loadMessages } = useChatStore()
+  const activeSessions = useChatStore(state => state.activeSessions)
+  const loadMessages = useChatStore(state => state.loadMessages)
 
+  // Get current session without causing re-renders
+  const currentSession = activeSessions.get(sessionId)
+  const hasSession = !!currentSession
+  const sessionBookId = currentSession?.session.book_id
+  const messageCount = currentSession?.messages.length ?? 0
+
+  // Effect for loading session data
   useEffect(() => {
     // Check authentication
     if (!isAuthenticated) {
       router.push('/auth/login')
+      return
+    }
+
+    // Skip if we already have the session with bookId
+    if (hasSession && sessionBookId && bookId === sessionBookId) {
+      setIsLoading(false)
       return
     }
 
@@ -35,28 +49,12 @@ export default function BookDialoguePage() {
         setIsLoading(true)
         setError(null)
 
-        // Check if session exists in store
-        const session = activeSessions.get(sessionId)
-
-        if (session) {
-          // Session exists in store
-          setBookId(session.session.book_id)
-
-          // Load messages if not already loaded
-          if (session.messages.length === 0) {
-            await loadMessages(sessionId)
-          }
-        } else {
+        if (!hasSession) {
           // Session not in store, load from API
           await loadMessages(sessionId)
-
-          // Check again after loading
-          const loadedSession = activeSessions.get(sessionId)
-          if (loadedSession) {
-            setBookId(loadedSession.session.book_id)
-          } else {
-            throw new Error('Session not found')
-          }
+        } else if (messageCount === 0) {
+          // Session exists but no messages, load them
+          await loadMessages(sessionId)
         }
 
         setIsLoading(false)
@@ -68,7 +66,14 @@ export default function BookDialoguePage() {
     }
 
     loadSession()
-  }, [sessionId, isAuthenticated, activeSessions, loadMessages, router])
+  }, [sessionId, isAuthenticated, hasSession, messageCount, loadMessages, router, bookId, sessionBookId])
+
+  // Effect for updating bookId when session is loaded
+  useEffect(() => {
+    if (hasSession && sessionBookId && bookId !== sessionBookId) {
+      setBookId(sessionBookId)
+    }
+  }, [hasSession, sessionBookId, bookId])
 
   // Handle session end
   const handleSessionEnd = () => {

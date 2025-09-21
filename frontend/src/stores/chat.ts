@@ -403,9 +403,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ...session,
           messages: page === 1 ? messages : [...messages, ...session.messages],
         }
-        set((state) => ({
-          activeSessions: new Map(state.activeSessions).set(sessionId, updatedSession)
-        }))
+        set((state) => {
+          const newSessions = new Map(state.activeSessions)
+          newSessions.set(sessionId, updatedSession)
+          return {
+            ...state,
+            activeSessions: newSessions
+          }
+        })
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load messages'
@@ -455,9 +460,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messageQueue: [],
       lastActivityTime: Date.now()
     }
-    set((state) => ({
-      activeSessions: new Map(state.activeSessions).set(session.id, chatSession)
-    }))
+    set((state) => {
+      const newSessions = new Map(state.activeSessions)
+      newSessions.set(session.id, chatSession)
+      return {
+        ...state,
+        activeSessions: newSessions
+      }
+    })
 
     // Auto-connect WebSocket for new session
     get().connectWebSocket(session.id)
@@ -469,8 +479,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (!session) return state
 
       const updatedSession = { ...session, ...updates }
+      const newSessions = new Map(state.activeSessions)
+      newSessions.set(sessionId, updatedSession)
       return {
-        activeSessions: new Map(state.activeSessions).set(sessionId, updatedSession)
+        ...state,
+        activeSessions: newSessions
       }
     })
   },
@@ -485,8 +498,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages: [...session.messages, message],
         lastActivityTime: Date.now()
       }
+      const newSessions = new Map(state.activeSessions)
+      newSessions.set(sessionId, updatedSession)
       return {
-        activeSessions: new Map(state.activeSessions).set(sessionId, updatedSession)
+        ...state,
+        activeSessions: newSessions
       }
     })
   },
@@ -510,6 +526,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const newSessions = new Map(state.activeSessions)
       newSessions.delete(sessionId)
       return {
+        ...state,
         activeSessions: newSessions,
         currentSessionId: state.currentSessionId === sessionId ? null : state.currentSessionId
       }

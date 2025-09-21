@@ -4,11 +4,19 @@ import type { NextRequest } from 'next/server';
 // List of protected routes that require authentication
 const protectedRoutes = [
   '/profile',
+  '/profile/edit',      // User profile editing
+  '/profile/settings',  // User settings
+  '/profile/history',   // User history
   '/dialogues',
   '/upload',
+  '/upload/manage',     // Upload management
   '/dashboard',
   '/settings',
-  '/chat'  // Chat requires authentication for quota tracking
+  '/chat/book/',        // Book chat sessions require authentication (includes /chat/book/[sessionId])
+  '/chat/character/',   // Character chat sessions require authentication (includes /chat/character/[sessionId])
+  '/membership',        // Membership center
+  '/membership/checkout' // Membership payment
+  // Note: /chat index page is public for browsing books
 ];
 
 // List of auth routes (login, register, etc.)

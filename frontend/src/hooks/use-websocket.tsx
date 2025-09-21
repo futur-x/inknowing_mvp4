@@ -94,8 +94,13 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     const token = api.getAuthToken()
     const wsUrl = api.createWebSocketUrl(dialogueId, token || undefined)
 
+    // Extract base URL properly - keep ws:// or wss:// protocol
+    const baseUrl = wsUrl.replace(/\/ws\/dialogue\/.*/, '')
+
     const config: WebSocketConfig = {
-      url: wsUrl.replace(/\/dialogue\/.*/, ''), // Extract base URL
+      url: baseUrl.startsWith('ws://') || baseUrl.startsWith('wss://')
+        ? baseUrl
+        : `ws://${baseUrl.replace(/^https?:\/\//, '')}`, // Ensure WebSocket protocol
       dialogueId,
       token: token || undefined,
       reconnectAttempts: 5,

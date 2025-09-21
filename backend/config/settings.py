@@ -31,8 +31,8 @@ class Settings(BaseSettings):
     DATABASE_ECHO: bool = Field(default=False)
 
     # Security
-    SECRET_KEY: str = Field(default="change-this-secret-key")
-    ADMIN_SECRET_KEY: str = Field(default="change-this-admin-secret-key")
+    SECRET_KEY: str = Field(default="097c57e3e90d9e07ba607d72bb57568676c25beb50cf6524366a11bb4d775522")
+    ADMIN_SECRET_KEY: str = Field(default="7449480e5c12fc2a2764635f6f94b1f4f83c4f019050798c92039978422864b1")
     ALGORITHM: str = Field(default="HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30)
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7)

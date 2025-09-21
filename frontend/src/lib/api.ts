@@ -453,13 +453,21 @@ export const api = {
   },
 
   // WebSocket Connection Helper
-  createWebSocketUrl: (sessionId: string) => {
+  createWebSocketUrl: (sessionId: string, token?: string) => {
     const wsBaseUrl = typeof window !== 'undefined'
-      ? `ws://${window.location.hostname}:8888/ws`
-      : (process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8888/ws')
+      ? (process.env.NEXT_PUBLIC_WS_BASE_URL || `ws://${window.location.hostname}:8888`)
+      : (process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8888')
+
+    // Build WebSocket URL with dialogue session
+    const wsUrl = `${wsBaseUrl}/ws/dialogue/${sessionId}`
+
+    // Add token as query parameter if provided
+    if (token) {
+      return `${wsUrl}?token=${token}`
+    }
 
     // Authentication is handled via cookies
-    return `${wsBaseUrl}/dialogue/${sessionId}`
+    return wsUrl
   },
 
   // Helper for getting current auth token

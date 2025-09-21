@@ -1,0 +1,497 @@
+# InKnowing MVP 4.0 - Performance & Security Contract
+# Contract-Driven Development (CDD) - 性能与安全契约
+# Version: 1.0.0
+# Generated: 2025-09-21
+# Purpose: Define and enforce performance and security standards
+
+contract:
+  version: "1.0.0"
+  name: "InKnowing Performance & Security"
+  type: "performance-security"
+
+# ================================
+# 1. Performance Requirements
+# ================================
+performance:
+  response_time:
+    page_load:
+      home_page:
+        target: "< 2s"
+        p95: "< 3s"
+        max: "< 5s"
+
+      book_list:
+        target: "< 2.5s"
+        p95: "< 3.5s"
+        max: "< 5s"
+
+      chat_interface:
+        target: "< 1.5s"
+        p95: "< 2s"
+        max: "< 3s"
+
+      search_results:
+        target: "< 1s"
+        p95: "< 2s"
+        max: "< 3s"
+
+    api_response:
+      authentication:
+        login: "< 200ms"
+        register: "< 300ms"
+        refresh: "< 100ms"
+        logout: "< 100ms"
+
+      user_operations:
+        get_profile: "< 150ms"
+        update_profile: "< 200ms"
+        get_membership: "< 100ms"
+
+      book_operations:
+        list_books: "< 500ms"
+        get_book_detail: "< 200ms"
+        get_characters: "< 300ms"
+
+      dialogue_operations:
+        start_dialogue: "< 1s"
+        send_message: "< 2s"
+        get_history: "< 500ms"
+
+      search_operations:
+        keyword_search: "< 500ms"
+        semantic_search: "< 1.5s"
+
+    websocket:
+      connection_time: "< 1s"
+      message_latency: "< 100ms"
+      reconnection_time: "< 3s"
+      max_reconnection_attempts: 5
+
+  throughput:
+    concurrent_users:
+      minimum: 100
+      target: 1000
+      peak: 5000
+
+    requests_per_second:
+      api: 1000
+      websocket: 500
+      static_assets: 5000
+
+    database:
+      queries_per_second: 2000
+      connection_pool: 20
+      max_connections: 100
+
+  resource_limits:
+    frontend:
+      bundle_size: "< 500KB"
+      initial_js: "< 200KB"
+      lazy_chunks: "< 100KB each"
+      images: "< 200KB each"
+
+    backend:
+      memory_usage: "< 512MB per instance"
+      cpu_usage: "< 70% average"
+      disk_io: "< 100MB/s"
+
+    database:
+      query_time: "< 100ms average"
+      index_size: "< 20% of data"
+      cache_hit_ratio: "> 90%"
+
+  scalability:
+    horizontal_scaling:
+      enabled: true
+      auto_scale_triggers:
+        cpu: "> 70%"
+        memory: "> 80%"
+        requests: "> 80% capacity"
+
+    load_balancing:
+      algorithm: "round-robin"
+      health_check_interval: 10
+      unhealthy_threshold: 3
+
+# ================================
+# 2. Security Requirements
+# ================================
+security:
+  authentication:
+    password_policy:
+      min_length: 8
+      require_uppercase: true
+      require_lowercase: true
+      require_numbers: true
+      require_special: false
+      max_age_days: 90
+      history_count: 5
+
+    token_management:
+      access_token:
+        algorithm: "HS256"
+        expiration: "30 minutes"
+        refresh_threshold: "5 minutes"
+
+      refresh_token:
+        algorithm: "HS256"
+        expiration: "7 days"
+        rotation: true
+        single_use: true
+
+    session_management:
+      timeout: "30 minutes"
+      concurrent_sessions: 3
+      ip_binding: false
+      device_fingerprinting: true
+
+    mfa:
+      enabled: false  # For future implementation
+      methods: ["sms", "totp"]
+
+  authorization:
+    model: "RBAC"
+    roles:
+      - name: "guest"
+        permissions: ["read:public"]
+
+      - name: "user"
+        permissions: ["read:public", "read:own", "write:own"]
+
+      - name: "premium"
+        permissions: ["read:public", "read:own", "write:own", "upload:book"]
+
+      - name: "admin"
+        permissions: ["all"]
+
+    resource_access:
+      check_owner: true
+      check_permissions: true
+      audit_access: true
+
+  data_protection:
+    encryption:
+      at_rest:
+        enabled: true
+        algorithm: "AES-256"
+        key_rotation: "90 days"
+
+      in_transit:
+        enabled: true
+        tls_version: "1.2+"
+        cipher_suites: ["TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"]
+
+    pii_handling:
+      identification:
+        - "phone"
+        - "email"
+        - "wechat_id"
+        - "payment_info"
+
+      protection:
+        masking: true
+        encryption: true
+        retention_days: 365
+        right_to_delete: true
+
+    backup:
+      frequency: "daily"
+      retention: "30 days"
+      encryption: true
+      offsite: true
+
+  input_validation:
+    sanitization:
+      html_encoding: true
+      sql_escape: true
+      command_injection: true
+      path_traversal: true
+
+    validation_rules:
+      email: "RFC 5322 compliant"
+      phone: "E.164 format"
+      url: "RFC 3986 compliant"
+      file_upload: "whitelist extensions"
+
+    file_upload:
+      allowed_types: ["pdf", "txt", "epub"]
+      max_size: "50MB"
+      virus_scan: true
+      content_validation: true
+
+  api_security:
+    rate_limiting:
+      default:
+        requests: 100
+        window: "60 seconds"
+
+      auth_endpoints:
+        requests: 5
+        window: "60 seconds"
+
+      upload_endpoints:
+        requests: 10
+        window: "3600 seconds"
+
+    cors:
+      enabled: true
+      allowed_origins:
+        - "http://localhost:3555"
+        - "https://inknowing.com"
+      allowed_methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
+      allowed_headers: ["Content-Type", "Authorization"]
+      credentials: true
+      max_age: 86400
+
+    headers:
+      X-Content-Type-Options: "nosniff"
+      X-Frame-Options: "DENY"
+      X-XSS-Protection: "1; mode=block"
+      Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+      Content-Security-Policy: "default-src 'self'"
+
+  vulnerability_protection:
+    owasp_top_10:
+      injection:
+        sql_injection: "Parameterized queries"
+        nosql_injection: "Input validation"
+        command_injection: "Whitelist commands"
+
+      broken_authentication:
+        weak_passwords: "Password policy enforced"
+        session_fixation: "Session regeneration"
+        credential_stuffing: "Rate limiting + CAPTCHA"
+
+      sensitive_data_exposure:
+        encryption: "TLS 1.2+"
+        data_classification: "PII identified"
+        logging: "No sensitive data in logs"
+
+      xxe:
+        xml_parsing: "Disabled external entities"
+        dtd_processing: "Disabled"
+
+      broken_access_control:
+        authorization: "RBAC enforced"
+        privilege_escalation: "Prevented"
+        cors: "Properly configured"
+
+      security_misconfiguration:
+        default_passwords: "Changed"
+        error_messages: "Generic"
+        directory_listing: "Disabled"
+
+      xss:
+        output_encoding: "HTML entity encoding"
+        content_type: "Proper headers"
+        csp: "Content Security Policy"
+
+      insecure_deserialization:
+        input_validation: "Strict typing"
+        integrity_checks: "HMAC verification"
+
+      using_components_with_vulnerabilities:
+        dependency_scanning: "Weekly"
+        patching: "Within 30 days"
+
+      insufficient_logging:
+        audit_trail: "Complete"
+        monitoring: "Real-time"
+        alerting: "Automated"
+
+# ================================
+# 3. Monitoring & Alerting
+# ================================
+monitoring:
+  metrics:
+    application:
+      - "Request rate"
+      - "Error rate"
+      - "Response time"
+      - "Active users"
+      - "WebSocket connections"
+
+    infrastructure:
+      - "CPU usage"
+      - "Memory usage"
+      - "Disk I/O"
+      - "Network traffic"
+      - "Database connections"
+
+    business:
+      - "User registrations"
+      - "Dialogue sessions"
+      - "Upload count"
+      - "Payment transactions"
+
+  logging:
+    levels:
+      production: ["ERROR", "WARN", "INFO"]
+      development: ["ERROR", "WARN", "INFO", "DEBUG"]
+
+    retention:
+      error_logs: "90 days"
+      access_logs: "30 days"
+      audit_logs: "365 days"
+
+    structured_logging:
+      format: "JSON"
+      fields:
+        - "timestamp"
+        - "level"
+        - "message"
+        - "user_id"
+        - "session_id"
+        - "request_id"
+        - "ip_address"
+
+  alerting:
+    critical:
+      - trigger: "Error rate > 5%"
+        action: "Page team immediately"
+
+      - trigger: "Response time > 5s"
+        action: "Page team immediately"
+
+      - trigger: "Database down"
+        action: "Page team immediately"
+
+    warning:
+      - trigger: "CPU > 80%"
+        action: "Email team"
+
+      - trigger: "Memory > 85%"
+        action: "Email team"
+
+      - trigger: "Disk > 90%"
+        action: "Email team"
+
+    channels:
+      - "Email"
+      - "SMS"
+      - "Slack"
+      - "PagerDuty"
+
+# ================================
+# 4. Disaster Recovery
+# ================================
+disaster_recovery:
+  backup:
+    database:
+      frequency: "Every 6 hours"
+      retention: "30 days"
+      location: "Offsite"
+      encryption: true
+
+    files:
+      frequency: "Daily"
+      retention: "7 days"
+      location: "S3"
+
+    configurations:
+      frequency: "On change"
+      version_control: "Git"
+
+  recovery:
+    rto: "4 hours"  # Recovery Time Objective
+    rpo: "1 hour"   # Recovery Point Objective
+
+    procedures:
+      - "Automated failover"
+      - "Manual intervention fallback"
+      - "Communication plan"
+
+  testing:
+    frequency: "Quarterly"
+    scenarios:
+      - "Database failure"
+      - "Service outage"
+      - "Data corruption"
+      - "Security breach"
+
+# ================================
+# 5. Compliance
+# ================================
+compliance:
+  data_privacy:
+    gdpr:
+      applicable: false
+      requirements: []
+
+    ccpa:
+      applicable: false
+      requirements: []
+
+    pipl:
+      applicable: true
+      requirements:
+        - "User consent for data collection"
+        - "Data localization in China"
+        - "Right to access and delete"
+
+  security_standards:
+    iso_27001: false
+    soc2: false
+    pci_dss: false
+
+  audit:
+    frequency: "Annual"
+    scope:
+      - "Security controls"
+      - "Access management"
+      - "Data handling"
+      - "Incident response"
+
+# ================================
+# Contract Validation Rules
+# ================================
+validation_rules:
+  performance:
+    - id: "PERF001"
+      rule: "Page load time must be < 3s (p95)"
+      severity: "ERROR"
+
+    - id: "PERF002"
+      rule: "API response time must be < 1s (p95)"
+      severity: "WARNING"
+
+    - id: "PERF003"
+      rule: "Database query time must be < 100ms (avg)"
+      severity: "WARNING"
+
+    - id: "PERF004"
+      rule: "WebSocket latency must be < 100ms"
+      severity: "ERROR"
+
+  security:
+    - id: "SEC001"
+      rule: "All passwords must be hashed with bcrypt"
+      severity: "ERROR"
+
+    - id: "SEC002"
+      rule: "All API endpoints must use HTTPS"
+      severity: "ERROR"
+
+    - id: "SEC003"
+      rule: "JWT tokens must have expiration"
+      severity: "ERROR"
+
+    - id: "SEC004"
+      rule: "Input validation must be enforced"
+      severity: "ERROR"
+
+    - id: "SEC005"
+      rule: "Rate limiting must be implemented"
+      severity: "ERROR"
+
+    - id: "SEC006"
+      rule: "CORS must be properly configured"
+      severity: "ERROR"
+
+    - id: "SEC007"
+      rule: "Security headers must be set"
+      severity: "WARNING"
+
+    - id: "SEC008"
+      rule: "Audit logging must be enabled"
+      severity: "ERROR"

@@ -1,0 +1,455 @@
+# InKnowing MVP 4.0 - Frontend Contract
+# Contract-Driven Development (CDD) - 前端功能契约
+# Version: 1.0.0
+# Generated: 2025-09-21
+# Purpose: Define and enforce frontend standards and configurations
+
+contract:
+  version: "1.0.0"
+  name: "InKnowing Frontend"
+  type: "frontend"
+
+# ================================
+# 1. Routing Configuration
+# ================================
+routes:
+  public:
+    - path: "/"
+      component: "HomePage"
+      description: "Landing page"
+
+    - path: "/books"
+      component: "BooksPage"
+      description: "Book catalog"
+
+    - path: "/search"
+      component: "SearchPage"
+      description: "Search and discovery"
+
+    - path: "/chat"
+      component: "ChatIndexPage"
+      description: "Chat overview (public)"
+
+  auth:
+    - path: "/auth/login"
+      component: "LoginPage"
+      description: "User login"
+
+    - path: "/auth/register"
+      component: "RegisterPage"
+      description: "User registration"
+
+    - path: "/auth/verify"
+      component: "VerifyPage"
+      description: "Phone/email verification"
+
+    - path: "/auth/forgot-password"
+      component: "ForgotPasswordPage"
+      description: "Password recovery"
+
+    - path: "/auth/wechat"
+      component: "WeChatAuthPage"
+      description: "WeChat login"
+
+    - path: "/auth/wechat/callback"
+      component: "WeChatCallbackPage"
+      description: "WeChat OAuth callback"
+
+  protected:
+    - path: "/profile"
+      component: "ProfilePage"
+      requires_auth: true
+      description: "User profile"
+
+    - path: "/profile/edit"
+      component: "ProfileEditPage"
+      requires_auth: true
+      description: "Edit profile"
+
+    - path: "/profile/settings"
+      component: "ProfileSettingsPage"
+      requires_auth: true
+      description: "Account settings"
+
+    - path: "/profile/history"
+      component: "ProfileHistoryPage"
+      requires_auth: true
+      description: "Chat history"
+
+    - path: "/chat/book/[sessionId]"
+      component: "BookChatPage"
+      requires_auth: true
+      description: "Book dialogue session"
+
+    - path: "/chat/character/[sessionId]"
+      component: "CharacterChatPage"
+      requires_auth: true
+      description: "Character dialogue session"
+
+    - path: "/membership"
+      component: "MembershipPage"
+      requires_auth: true
+      description: "Membership plans"
+
+    - path: "/membership/checkout"
+      component: "CheckoutPage"
+      requires_auth: true
+      description: "Payment checkout"
+
+    - path: "/upload"
+      component: "UploadPage"
+      requires_auth: true
+      description: "Upload books"
+
+    - path: "/upload/manage"
+      component: "UploadManagePage"
+      requires_auth: true
+      description: "Manage uploads"
+
+  admin:
+    - path: "/admin"
+      component: "AdminDashboard"
+      requires_role: "admin"
+      description: "Admin dashboard"
+
+    - path: "/admin/users"
+      component: "AdminUsersPage"
+      requires_role: "admin"
+      description: "User management"
+
+    - path: "/admin/content"
+      component: "AdminContentPage"
+      requires_role: "admin"
+      description: "Content management"
+
+    - path: "/admin/analytics"
+      component: "AdminAnalyticsPage"
+      requires_role: "admin"
+      description: "Analytics dashboard"
+
+    - path: "/admin/settings"
+      component: "AdminSettingsPage"
+      requires_role: "admin"
+      description: "System settings"
+
+# ================================
+# 2. State Management
+# ================================
+stores:
+  auth_store:
+    file: "stores/auth.ts"
+    state:
+      - field: "user"
+        type: "User | null"
+      - field: "token"
+        type: "string | null"
+      - field: "refreshToken"
+        type: "string | null"
+      - field: "isAuthenticated"
+        type: "boolean"
+      - field: "isLoading"
+        type: "boolean"
+      - field: "error"
+        type: "string | null"
+    actions:
+      - "login"
+      - "register"
+      - "logout"
+      - "refreshAuth"
+      - "checkAuth"
+
+  user_store:
+    file: "stores/user.ts"
+    state:
+      - field: "profile"
+        type: "UserProfile | null"
+      - field: "membership"
+        type: "Membership | null"
+      - field: "quota"
+        type: "DialogueQuota | null"
+    actions:
+      - "fetchProfile"
+      - "updateProfile"
+      - "fetchMembership"
+      - "fetchQuota"
+
+  chat_store:
+    file: "stores/chat.ts"
+    state:
+      - field: "sessions"
+        type: "ChatSession[]"
+      - field: "currentSession"
+        type: "ChatSession | null"
+      - field: "messages"
+        type: "Message[]"
+      - field: "isConnected"
+        type: "boolean"
+    actions:
+      - "createSession"
+      - "loadSession"
+      - "sendMessage"
+      - "receiveMessage"
+
+# ================================
+# 3. API Configuration
+# ================================
+api:
+  base_url:
+    development: "http://localhost:8888/v1"
+    production: "https://api.inknowing.com/v1"
+
+  endpoints:
+    auth:
+      login: "POST /auth/login"
+      register: "POST /auth/register"
+      logout: "POST /auth/logout"
+      refresh: "POST /auth/refresh"
+      verify_code: "POST /auth/verify-code"
+      wechat_login: "POST /auth/wechat/login"
+
+    users:
+      profile: "GET /users/profile"
+      update_profile: "PATCH /users/profile"
+      membership: "GET /users/membership"
+      upgrade: "POST /users/membership/upgrade"
+      quota: "GET /users/quota"
+
+    books:
+      list: "GET /books"
+      popular: "GET /books/popular"
+      detail: "GET /books/{id}"
+      characters: "GET /books/{id}/characters"
+
+    search:
+      question: "GET /search"
+      books: "GET /search/books"
+
+    dialogue:
+      start_book: "POST /dialogues/book/start"
+      start_character: "POST /dialogues/character/start"
+      send_message: "POST /dialogues/{id}/messages"
+      get_messages: "GET /dialogues/{id}/messages"
+      get_context: "GET /dialogues/{id}/context"
+      history: "GET /dialogues/history"
+
+    upload:
+      check: "POST /uploads/check"
+      upload: "POST /uploads"
+      status: "GET /uploads/{id}"
+      user_uploads: "GET /uploads/my"
+
+    websocket:
+      dialogue: "ws://localhost:8888/ws/dialogue/{session_id}"
+
+# ================================
+# 4. Authentication Configuration
+# ================================
+authentication:
+  storage:
+    access_token:
+      type: "httpOnly cookie"
+      name: "access_token"
+      expires: "30 minutes"
+
+    refresh_token:
+      type: "httpOnly cookie"
+      name: "refresh_token"
+      expires: "7 days"
+
+    ws_token:
+      type: "sessionStorage"
+      name: "ws_token"
+      purpose: "WebSocket authentication"
+
+  middleware:
+    protected_routes:
+      - "/profile"
+      - "/dialogues"
+      - "/upload"
+      - "/dashboard"
+      - "/settings"
+      - "/chat/book"
+      - "/chat/character"
+
+    auth_routes:
+      - "/auth/login"
+      - "/auth/register"
+      - "/auth/forgot-password"
+      - "/auth/verify"
+      - "/login"
+      - "/register"
+
+  redirect_behavior:
+    after_login: "/"
+    after_logout: "/auth/login"
+    unauthorized: "/auth/login?redirect={path}"
+
+# ================================
+# 5. UI Components Configuration
+# ================================
+components:
+  design_system:
+    library: "Radix UI"
+    styling: "Tailwind CSS"
+    icons: "Lucide React"
+
+  ui_components:
+    - category: "Layout"
+      components: ["Header", "Footer", "Sidebar", "Navigation"]
+
+    - category: "Auth"
+      components: ["LoginForm", "RegisterForm", "PhoneInput", "VerificationInput"]
+
+    - category: "Chat"
+      components: ["MessageList", "MessageItem", "ChatInput", "TypingIndicator"]
+
+    - category: "Books"
+      components: ["BookCard", "BookGrid", "BookFilters", "BookDetail"]
+
+    - category: "Profile"
+      components: ["ProfileHeader", "ProfileForm", "MembershipCard", "ActivityStats"]
+
+    - category: "Upload"
+      components: ["UploadZone", "BookForm", "ProcessingStatus", "UploadQueue"]
+
+    - category: "Common"
+      components: ["Button", "Input", "Dialog", "Card", "Alert", "Loading"]
+
+# ================================
+# 6. WebSocket Configuration
+# ================================
+websocket:
+  connection:
+    url_pattern: "ws://{host}/ws/dialogue/{session_id}"
+    protocols: ["chat", "dialogue"]
+    reconnect_attempts: 5
+    reconnect_interval: 3000
+
+  events:
+    outgoing:
+      - type: "message"
+        payload: "{content: string, session_id: string}"
+      - type: "typing"
+        payload: "{is_typing: boolean}"
+
+    incoming:
+      - type: "message"
+        payload: "{content: string, role: string, timestamp: string}"
+      - type: "stream_chunk"
+        payload: "{chunk: string, done: boolean}"
+      - type: "error"
+        payload: "{code: string, message: string}"
+      - type: "connection"
+        payload: "{status: string}"
+
+# ================================
+# 7. Error Handling
+# ================================
+error_handling:
+  api_errors:
+    401:
+      action: "Refresh token and retry"
+      fallback: "Redirect to login"
+
+    403:
+      action: "Show permission error"
+      message: "You don't have permission to access this resource"
+
+    404:
+      action: "Show not found page"
+      message: "The requested resource was not found"
+
+    500:
+      action: "Show error message"
+      message: "Something went wrong. Please try again later"
+
+  validation_errors:
+    required_field: "This field is required"
+    invalid_email: "Please enter a valid email address"
+    invalid_phone: "Please enter a valid phone number"
+    password_mismatch: "Passwords do not match"
+    password_weak: "Password must be at least 8 characters"
+
+# ================================
+# 8. Performance Configuration
+# ================================
+performance:
+  optimization:
+    code_splitting: true
+    lazy_loading: true
+    image_optimization: true
+    bundle_size_limit: "500kb"
+
+  caching:
+    api_cache_ttl: 300
+    static_assets: "1 year"
+    html_cache: "no-cache"
+
+  monitoring:
+    web_vitals: true
+    error_tracking: true
+    user_analytics: true
+
+# ================================
+# 9. Environment Variables
+# ================================
+environment_variables:
+  required:
+    - name: "NEXT_PUBLIC_API_BASE_URL"
+      description: "Backend API base URL"
+      example: "http://localhost:8888/v1"
+
+    - name: "NEXT_PUBLIC_WS_BASE_URL"
+      description: "WebSocket base URL"
+      example: "ws://localhost:8888"
+
+    - name: "NEXT_PUBLIC_APP_URL"
+      description: "Frontend application URL"
+      example: "http://localhost:3555"
+
+  optional:
+    - name: "NEXT_PUBLIC_SENTRY_DSN"
+      description: "Sentry error tracking DSN"
+
+    - name: "NEXT_PUBLIC_GA_ID"
+      description: "Google Analytics ID"
+
+# ================================
+# Contract Validation Rules
+# ================================
+validation_rules:
+  routing:
+    - id: "ROUTE001"
+      rule: "All protected routes must check authentication"
+      severity: "ERROR"
+
+    - id: "ROUTE002"
+      rule: "Admin routes must verify admin role"
+      severity: "ERROR"
+
+  state:
+    - id: "STATE001"
+      rule: "Auth state must sync with cookies"
+      severity: "ERROR"
+
+    - id: "STATE002"
+      rule: "Store actions must handle errors"
+      severity: "WARNING"
+
+  api:
+    - id: "API001"
+      rule: "All API calls must include credentials"
+      severity: "ERROR"
+
+    - id: "API002"
+      rule: "Failed requests must be retried with exponential backoff"
+      severity: "WARNING"
+
+  ui:
+    - id: "UI001"
+      rule: "Forms must show validation errors"
+      severity: "ERROR"
+
+    - id: "UI002"
+      rule: "Loading states must be shown during async operations"
+      severity: "WARNING"

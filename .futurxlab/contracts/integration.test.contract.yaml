@@ -1,0 +1,427 @@
+# InKnowing MVP 4.0 - Integration Test Contract
+# Contract-Driven Development (CDD) - 集成测试契约
+# Version: 1.0.0
+# Generated: 2025-09-21
+# Purpose: Define and enforce integration testing standards
+
+contract:
+  version: "1.0.0"
+  name: "InKnowing Integration Tests"
+  type: "integration-test"
+
+# ================================
+# 1. Test Configuration
+# ================================
+test_config:
+  framework: "Playwright + pytest"
+  test_environment: "http://localhost:3555 + http://localhost:8888"
+  timeout: 30000
+  retry_count: 2
+  parallel_execution: true
+
+  test_data:
+    test_user:
+      username: "testuser"
+      password: "Test123456"
+      phone: "+8613800138000"
+
+    test_book:
+      title: "Test Book"
+      author: "Test Author"
+
+    test_admin:
+      username: "admin"
+      password: "Admin123456"
+
+# ================================
+# 2. Authentication Flow Tests
+# ================================
+test_suites:
+  auth_flow:
+    name: "Authentication Flow Tests"
+    tests:
+      - id: "AUTH001"
+        name: "User Registration Flow"
+        steps:
+          - action: "Navigate to /auth/register"
+          - action: "Fill registration form"
+          - action: "Submit form"
+          - assertion: "User created successfully"
+          - assertion: "Redirected to home page"
+          - assertion: "Cookie 'access_token' is set"
+
+      - id: "AUTH002"
+        name: "User Login Flow"
+        steps:
+          - action: "Navigate to /auth/login"
+          - action: "Enter valid credentials"
+          - action: "Submit login form"
+          - assertion: "Login successful"
+          - assertion: "User data loaded"
+          - assertion: "Cookie 'access_token' is set"
+          - assertion: "Cookie 'refresh_token' is set"
+
+      - id: "AUTH003"
+        name: "Token Refresh Flow"
+        steps:
+          - action: "Login with valid credentials"
+          - action: "Wait for access token to expire"
+          - action: "Make API request"
+          - assertion: "Token automatically refreshed"
+          - assertion: "Request completed successfully"
+
+      - id: "AUTH004"
+        name: "Logout Flow"
+        steps:
+          - action: "Login as user"
+          - action: "Click logout button"
+          - assertion: "Cookies cleared"
+          - assertion: "Redirected to login page"
+          - assertion: "Protected routes inaccessible"
+
+      - id: "AUTH005"
+        name: "Protected Route Access"
+        steps:
+          - action: "Navigate to /profile without auth"
+          - assertion: "Redirected to /auth/login"
+          - action: "Login"
+          - assertion: "Redirected back to /profile"
+
+# ================================
+# 3. Dialogue Flow Tests
+# ================================
+  dialogue_flow:
+    name: "Dialogue Flow Tests"
+    tests:
+      - id: "DIAL001"
+        name: "Start Book Dialogue"
+        prerequisites: ["User logged in"]
+        steps:
+          - action: "Navigate to /books"
+          - action: "Select a book"
+          - action: "Click 'Start Dialogue'"
+          - assertion: "Dialogue session created"
+          - assertion: "WebSocket connection established"
+          - assertion: "Chat interface loaded"
+
+      - id: "DIAL002"
+        name: "Send and Receive Messages"
+        prerequisites: ["Dialogue session active"]
+        steps:
+          - action: "Type message in chat input"
+          - action: "Send message"
+          - assertion: "Message appears in chat"
+          - assertion: "AI response received"
+          - assertion: "Response streamed in real-time"
+
+      - id: "DIAL003"
+        name: "WebSocket Reconnection"
+        prerequisites: ["Active dialogue session"]
+        steps:
+          - action: "Simulate network disconnect"
+          - assertion: "Connection status shows 'disconnected'"
+          - action: "Restore network"
+          - assertion: "WebSocket auto-reconnects"
+          - assertion: "Chat history preserved"
+
+      - id: "DIAL004"
+        name: "Character Dialogue"
+        prerequisites: ["User logged in"]
+        steps:
+          - action: "Select book with characters"
+          - action: "Choose character"
+          - action: "Start character dialogue"
+          - assertion: "Character context loaded"
+          - assertion: "Character personality reflected in responses"
+
+      - id: "DIAL005"
+        name: "Dialogue History"
+        prerequisites: ["Multiple dialogue sessions"]
+        steps:
+          - action: "Navigate to /profile/history"
+          - assertion: "All dialogue sessions listed"
+          - action: "Click on past session"
+          - assertion: "Session messages loaded"
+          - assertion: "Can resume conversation"
+
+# ================================
+# 4. Search Flow Tests
+# ================================
+  search_flow:
+    name: "Search Flow Tests"
+    tests:
+      - id: "SRCH001"
+        name: "Question-Based Search"
+        steps:
+          - action: "Navigate to /search"
+          - action: "Enter question"
+          - action: "Submit search"
+          - assertion: "Relevant books returned"
+          - assertion: "Results ranked by relevance"
+
+      - id: "SRCH002"
+        name: "Book Title Search"
+        steps:
+          - action: "Navigate to /books"
+          - action: "Use search bar"
+          - action: "Enter book title"
+          - assertion: "Matching books displayed"
+          - assertion: "Filters work correctly"
+
+      - id: "SRCH003"
+        name: "Semantic Search"
+        steps:
+          - action: "Enter conceptual query"
+          - assertion: "Semantically related results returned"
+          - assertion: "Vector search functioning"
+
+# ================================
+# 5. Upload Flow Tests
+# ================================
+  upload_flow:
+    name: "Upload Flow Tests"
+    tests:
+      - id: "UPLD001"
+        name: "Book Upload"
+        prerequisites: ["User logged in", "Premium membership"]
+        steps:
+          - action: "Navigate to /upload"
+          - action: "Select file (PDF/TXT)"
+          - action: "Fill book metadata"
+          - action: "Submit upload"
+          - assertion: "Upload progress displayed"
+          - assertion: "Processing status updated"
+          - assertion: "Book available after processing"
+
+      - id: "UPLD002"
+        name: "Duplicate Detection"
+        steps:
+          - action: "Attempt to upload existing book"
+          - assertion: "Duplicate detected"
+          - assertion: "User notified"
+          - assertion: "Upload prevented"
+
+      - id: "UPLD003"
+        name: "Upload Quota Check"
+        prerequisites: ["Free tier user"]
+        steps:
+          - action: "Attempt upload"
+          - assertion: "Quota exceeded message"
+          - assertion: "Upgrade prompt shown"
+
+# ================================
+# 6. Payment Flow Tests
+# ================================
+  payment_flow:
+    name: "Payment Flow Tests"
+    tests:
+      - id: "PAY001"
+        name: "Membership Upgrade"
+        prerequisites: ["User logged in"]
+        steps:
+          - action: "Navigate to /membership"
+          - action: "Select premium plan"
+          - action: "Click upgrade"
+          - action: "Choose payment method"
+          - assertion: "Payment page loaded"
+          - assertion: "Order created"
+
+      - id: "PAY002"
+        name: "Payment Callback"
+        steps:
+          - action: "Complete payment externally"
+          - action: "Payment callback received"
+          - assertion: "Order status updated"
+          - assertion: "Membership activated"
+          - assertion: "Quota updated"
+
+# ================================
+# 7. Profile Flow Tests
+# ================================
+  profile_flow:
+    name: "Profile Flow Tests"
+    tests:
+      - id: "PROF001"
+        name: "View Profile"
+        prerequisites: ["User logged in"]
+        steps:
+          - action: "Navigate to /profile"
+          - assertion: "User data displayed"
+          - assertion: "Membership info shown"
+          - assertion: "Activity stats accurate"
+
+      - id: "PROF002"
+        name: "Edit Profile"
+        steps:
+          - action: "Navigate to /profile/edit"
+          - action: "Update nickname"
+          - action: "Update bio"
+          - action: "Save changes"
+          - assertion: "Profile updated successfully"
+          - assertion: "Changes reflected immediately"
+
+      - id: "PROF003"
+        name: "Avatar Upload"
+        steps:
+          - action: "Click change avatar"
+          - action: "Select image file"
+          - action: "Crop and save"
+          - assertion: "Avatar uploaded"
+          - assertion: "Displayed across app"
+
+# ================================
+# 8. Admin Flow Tests
+# ================================
+  admin_flow:
+    name: "Admin Flow Tests"
+    tests:
+      - id: "ADM001"
+        name: "Admin Login"
+        steps:
+          - action: "Navigate to /admin"
+          - action: "Enter admin credentials"
+          - assertion: "Admin dashboard loaded"
+          - assertion: "Admin role verified"
+
+      - id: "ADM002"
+        name: "User Management"
+        prerequisites: ["Admin logged in"]
+        steps:
+          - action: "Navigate to /admin/users"
+          - assertion: "User list loaded"
+          - action: "Search for user"
+          - action: "Update user status"
+          - assertion: "User status changed"
+
+      - id: "ADM003"
+        name: "Content Management"
+        steps:
+          - action: "Navigate to /admin/content"
+          - action: "Edit book metadata"
+          - action: "Toggle book visibility"
+          - assertion: "Changes saved"
+          - assertion: "Public view updated"
+
+# ================================
+# 9. End-to-End Scenarios
+# ================================
+  e2e_scenarios:
+    - id: "E2E001"
+      name: "Complete User Journey"
+      steps:
+        - "Register new user"
+        - "Browse books"
+        - "Search for specific topic"
+        - "Start dialogue with book"
+        - "Have conversation"
+        - "View dialogue history"
+        - "Upgrade membership"
+        - "Upload personal book"
+        - "Chat with uploaded book"
+
+    - id: "E2E002"
+      name: "Guest to Premium Journey"
+      steps:
+        - "Browse as guest"
+        - "Attempt protected action"
+        - "Register account"
+        - "Use free tier features"
+        - "Hit quota limit"
+        - "Upgrade to premium"
+        - "Access premium features"
+
+# ================================
+# 10. Performance Tests
+# ================================
+  performance_tests:
+    - id: "PERF001"
+      name: "Page Load Times"
+      metrics:
+        home_page: "< 2s"
+        book_list: "< 3s"
+        chat_interface: "< 2s"
+        profile_page: "< 1.5s"
+
+    - id: "PERF002"
+      name: "API Response Times"
+      metrics:
+        auth_endpoints: "< 200ms"
+        book_list: "< 500ms"
+        search: "< 1s"
+        dialogue_start: "< 2s"
+
+    - id: "PERF003"
+      name: "WebSocket Performance"
+      metrics:
+        connection_time: "< 1s"
+        message_latency: "< 100ms"
+        reconnection_time: "< 3s"
+
+# ================================
+# 11. Error Handling Tests
+# ================================
+  error_handling:
+    - id: "ERR001"
+      name: "Network Error Handling"
+      scenarios:
+        - "API timeout"
+        - "Network disconnection"
+        - "Server error (500)"
+      assertions:
+        - "Error message displayed"
+        - "Retry mechanism works"
+        - "Data not lost"
+
+    - id: "ERR002"
+      name: "Validation Error Handling"
+      scenarios:
+        - "Invalid form input"
+        - "Duplicate username"
+        - "Weak password"
+      assertions:
+        - "Clear error messages"
+        - "Field-level validation"
+        - "Form state preserved"
+
+# ================================
+# Contract Validation Rules
+# ================================
+validation_rules:
+  test_coverage:
+    - id: "TEST001"
+      rule: "All critical user flows must have tests"
+      severity: "ERROR"
+
+    - id: "TEST002"
+      rule: "Authentication flows must be tested"
+      severity: "ERROR"
+
+    - id: "TEST003"
+      rule: "WebSocket connections must be tested"
+      severity: "ERROR"
+
+  test_quality:
+    - id: "QUAL001"
+      rule: "Tests must have clear assertions"
+      severity: "ERROR"
+
+    - id: "QUAL002"
+      rule: "Tests must be idempotent"
+      severity: "WARNING"
+
+    - id: "QUAL003"
+      rule: "Tests must clean up test data"
+      severity: "WARNING"
+
+  performance:
+    - id: "PERF001"
+      rule: "Page load times must be under 3s"
+      severity: "WARNING"
+
+    - id: "PERF002"
+      rule: "API responses must be under 1s"
+      severity: "WARNING"
+
+    - id: "PERF003"
+      rule: "WebSocket reconnection must be under 5s"
+      severity: "ERROR"

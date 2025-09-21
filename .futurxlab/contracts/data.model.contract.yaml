@@ -1,0 +1,746 @@
+# InKnowing MVP 4.0 - Data Model Contract
+# Contract-Driven Development (CDD) - 数据模型契约
+# Version: 1.0.0
+# Generated: 2025-09-21
+# Purpose: Define and enforce data model standards
+
+contract:
+  version: "1.0.0"
+  name: "InKnowing Data Models"
+  type: "data-model"
+
+# ================================
+# 1. Database Configuration
+# ================================
+database:
+  main:
+    type: "PostgreSQL"
+    version: "14+"
+    schema: "public, auth, app"
+    connection_pool: 20
+    max_overflow: 0
+
+  cache:
+    type: "Redis"
+    version: "6+"
+    purpose: "Session storage, API cache"
+    ttl: 3600
+
+  vector:
+    type: "ChromaDB/Pinecone"
+    purpose: "Semantic search, embeddings"
+    dimensions: 1536
+
+# ================================
+# 2. User Models
+# ================================
+models:
+  user:
+    table: "auth.users"
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+        auto_generate: true
+
+      username:
+        type: "varchar(50)"
+        unique: true
+        required: true
+        pattern: "^[a-zA-Z0-9_]{3,50}$"
+
+      phone:
+        type: "varchar(20)"
+        unique: true
+        required: false
+        pattern: "^\\+?[1-9]\\d{1,14}$"
+
+      phone_verified:
+        type: "boolean"
+        default: false
+
+      email:
+        type: "varchar(255)"
+        unique: true
+        required: false
+        pattern: "^[\\w\\.-]+@[\\w\\.-]+\\.\\w+$"
+
+      email_verified:
+        type: "boolean"
+        default: false
+
+      password_hash:
+        type: "varchar(255)"
+        required: true
+
+      wechat_openid:
+        type: "varchar(100)"
+        unique: true
+        required: false
+
+      wechat_unionid:
+        type: "varchar(100)"
+        required: false
+
+      nickname:
+        type: "varchar(100)"
+        required: false
+
+      avatar:
+        type: "text"
+        required: false
+
+      bio:
+        type: "text"
+        required: false
+
+      membership_type:
+        type: "enum"
+        values: ["free", "basic", "premium", "super"]
+        default: "free"
+
+      membership_expires_at:
+        type: "timestamp"
+        required: false
+
+      dialogue_quota:
+        type: "integer"
+        default: 20
+
+      used_quota:
+        type: "integer"
+        default: 0
+
+      status:
+        type: "enum"
+        values: ["active", "suspended", "banned"]
+        default: "active"
+
+      last_login_at:
+        type: "timestamp"
+        required: false
+
+      created_at:
+        type: "timestamp"
+        auto_now_add: true
+
+      updated_at:
+        type: "timestamp"
+        auto_now: true
+
+    indexes:
+      - fields: ["username"]
+        unique: true
+      - fields: ["phone"]
+        unique: true
+      - fields: ["email"]
+        unique: true
+      - fields: ["wechat_openid"]
+        unique: true
+      - fields: ["membership_type", "status"]
+
+# ================================
+# 3. Book Models
+# ================================
+  book:
+    table: "app.books"
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+
+      title:
+        type: "varchar(255)"
+        required: true
+
+      author:
+        type: "varchar(255)"
+        required: true
+
+      description:
+        type: "text"
+        required: false
+
+      cover_image:
+        type: "text"
+        required: false
+
+      category:
+        type: "varchar(100)"
+        required: true
+
+      tags:
+        type: "jsonb"
+        default: "[]"
+
+      isbn:
+        type: "varchar(20)"
+        unique: true
+        required: false
+
+      publisher:
+        type: "varchar(255)"
+        required: false
+
+      publish_date:
+        type: "date"
+        required: false
+
+      language:
+        type: "varchar(10)"
+        default: "zh-CN"
+
+      page_count:
+        type: "integer"
+        required: false
+
+      rating:
+        type: "decimal(3,2)"
+        default: 0.0
+
+      dialogue_count:
+        type: "integer"
+        default: 0
+
+      is_featured:
+        type: "boolean"
+        default: false
+
+      is_active:
+        type: "boolean"
+        default: true
+
+      uploaded_by:
+        type: "uuid"
+        foreign_key: "auth.users.id"
+        required: false
+
+      vector_id:
+        type: "varchar(255)"
+        required: false
+
+      created_at:
+        type: "timestamp"
+        auto_now_add: true
+
+      updated_at:
+        type: "timestamp"
+        auto_now: true
+
+    indexes:
+      - fields: ["title", "author"]
+      - fields: ["category", "is_active"]
+      - fields: ["rating", "dialogue_count"]
+      - fields: ["uploaded_by"]
+
+  book_character:
+    table: "app.book_characters"
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+
+      book_id:
+        type: "uuid"
+        foreign_key: "app.books.id"
+        required: true
+
+      name:
+        type: "varchar(100)"
+        required: true
+
+      role:
+        type: "varchar(100)"
+        required: false
+
+      description:
+        type: "text"
+        required: false
+
+      personality:
+        type: "jsonb"
+        required: false
+
+      avatar:
+        type: "text"
+        required: false
+
+      dialogue_style:
+        type: "text"
+        required: false
+
+      is_main:
+        type: "boolean"
+        default: false
+
+      created_at:
+        type: "timestamp"
+        auto_now_add: true
+
+    indexes:
+      - fields: ["book_id", "name"]
+        unique: true
+      - fields: ["book_id", "is_main"]
+
+# ================================
+# 4. Dialogue Models
+# ================================
+  dialogue_session:
+    table: "app.dialogue_sessions"
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+
+      user_id:
+        type: "uuid"
+        foreign_key: "auth.users.id"
+        required: true
+
+      book_id:
+        type: "uuid"
+        foreign_key: "app.books.id"
+        required: true
+
+      character_id:
+        type: "uuid"
+        foreign_key: "app.book_characters.id"
+        required: false
+
+      type:
+        type: "enum"
+        values: ["book", "character"]
+        required: true
+
+      title:
+        type: "varchar(255)"
+        required: true
+
+      context:
+        type: "text"
+        required: false
+
+      message_count:
+        type: "integer"
+        default: 0
+
+      total_tokens:
+        type: "integer"
+        default: 0
+
+      status:
+        type: "enum"
+        values: ["active", "completed", "archived"]
+        default: "active"
+
+      started_at:
+        type: "timestamp"
+        auto_now_add: true
+
+      ended_at:
+        type: "timestamp"
+        required: false
+
+      last_message_at:
+        type: "timestamp"
+        required: false
+
+    indexes:
+      - fields: ["user_id", "status"]
+      - fields: ["book_id"]
+      - fields: ["character_id"]
+      - fields: ["started_at"]
+
+  dialogue_message:
+    table: "app.dialogue_messages"
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+
+      session_id:
+        type: "uuid"
+        foreign_key: "app.dialogue_sessions.id"
+        required: true
+
+      role:
+        type: "enum"
+        values: ["user", "assistant", "system"]
+        required: true
+
+      content:
+        type: "text"
+        required: true
+
+      tokens:
+        type: "integer"
+        required: false
+
+      metadata:
+        type: "jsonb"
+        required: false
+
+      created_at:
+        type: "timestamp"
+        auto_now_add: true
+
+    indexes:
+      - fields: ["session_id", "created_at"]
+      - fields: ["role"]
+
+# ================================
+# 5. Upload Models
+# ================================
+  upload:
+    table: "app.uploads"
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+
+      user_id:
+        type: "uuid"
+        foreign_key: "auth.users.id"
+        required: true
+
+      filename:
+        type: "varchar(255)"
+        required: true
+
+      file_path:
+        type: "text"
+        required: true
+
+      file_size:
+        type: "bigint"
+        required: true
+
+      file_hash:
+        type: "varchar(64)"
+        required: true
+
+      mime_type:
+        type: "varchar(100)"
+        required: true
+
+      status:
+        type: "enum"
+        values: ["pending", "processing", "completed", "failed"]
+        default: "pending"
+
+      progress:
+        type: "integer"
+        default: 0
+
+      book_id:
+        type: "uuid"
+        foreign_key: "app.books.id"
+        required: false
+
+      error_message:
+        type: "text"
+        required: false
+
+      metadata:
+        type: "jsonb"
+        required: false
+
+      created_at:
+        type: "timestamp"
+        auto_now_add: true
+
+      updated_at:
+        type: "timestamp"
+        auto_now: true
+
+    indexes:
+      - fields: ["user_id", "status"]
+      - fields: ["file_hash"]
+      - fields: ["book_id"]
+
+# ================================
+# 6. Payment Models
+# ================================
+  payment_order:
+    table: "app.payment_orders"
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+
+      order_no:
+        type: "varchar(50)"
+        unique: true
+        required: true
+
+      user_id:
+        type: "uuid"
+        foreign_key: "auth.users.id"
+        required: true
+
+      plan_type:
+        type: "enum"
+        values: ["basic", "premium", "super"]
+        required: true
+
+      amount:
+        type: "decimal(10,2)"
+        required: true
+
+      currency:
+        type: "varchar(3)"
+        default: "CNY"
+
+      payment_method:
+        type: "enum"
+        values: ["wechat", "alipay", "stripe"]
+        required: true
+
+      status:
+        type: "enum"
+        values: ["pending", "paid", "failed", "refunded", "cancelled"]
+        default: "pending"
+
+      transaction_id:
+        type: "varchar(255)"
+        required: false
+
+      paid_at:
+        type: "timestamp"
+        required: false
+
+      expires_at:
+        type: "timestamp"
+        required: false
+
+      metadata:
+        type: "jsonb"
+        required: false
+
+      created_at:
+        type: "timestamp"
+        auto_now_add: true
+
+      updated_at:
+        type: "timestamp"
+        auto_now: true
+
+    indexes:
+      - fields: ["order_no"]
+        unique: true
+      - fields: ["user_id", "status"]
+      - fields: ["transaction_id"]
+
+# ================================
+# 7. Admin Models
+# ================================
+  admin_user:
+    table: "auth.admin_users"
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+
+      username:
+        type: "varchar(50)"
+        unique: true
+        required: true
+
+      password_hash:
+        type: "varchar(255)"
+        required: true
+
+      role:
+        type: "enum"
+        values: ["super_admin", "admin", "moderator"]
+        default: "moderator"
+
+      permissions:
+        type: "jsonb"
+        default: "[]"
+
+      is_active:
+        type: "boolean"
+        default: true
+
+      last_login_at:
+        type: "timestamp"
+        required: false
+
+      created_at:
+        type: "timestamp"
+        auto_now_add: true
+
+      updated_at:
+        type: "timestamp"
+        auto_now: true
+
+    indexes:
+      - fields: ["username"]
+        unique: true
+      - fields: ["role", "is_active"]
+
+# ================================
+# 8. Monitoring Models
+# ================================
+  api_log:
+    table: "app.api_logs"
+    fields:
+      id:
+        type: "uuid"
+        primary_key: true
+
+      user_id:
+        type: "uuid"
+        foreign_key: "auth.users.id"
+        required: false
+
+      method:
+        type: "varchar(10)"
+        required: true
+
+      path:
+        type: "varchar(500)"
+        required: true
+
+      status_code:
+        type: "integer"
+        required: true
+
+      response_time:
+        type: "integer"
+        required: true
+
+      ip_address:
+        type: "varchar(45)"
+        required: true
+
+      user_agent:
+        type: "text"
+        required: false
+
+      request_body:
+        type: "jsonb"
+        required: false
+
+      response_body:
+        type: "jsonb"
+        required: false
+
+      error_message:
+        type: "text"
+        required: false
+
+      created_at:
+        type: "timestamp"
+        auto_now_add: true
+
+    indexes:
+      - fields: ["user_id"]
+      - fields: ["path", "method"]
+      - fields: ["status_code"]
+      - fields: ["created_at"]
+
+# ================================
+# 9. Cache Models
+# ================================
+cache_models:
+  session_cache:
+    storage: "Redis"
+    key_pattern: "session:{user_id}"
+    ttl: 1800
+    data:
+      user: "User object"
+      permissions: "array"
+      last_activity: "timestamp"
+
+  api_cache:
+    storage: "Redis"
+    key_pattern: "api:{endpoint}:{params_hash}"
+    ttl: 300
+    data:
+      response: "JSON object"
+      timestamp: "timestamp"
+
+  ws_token_cache:
+    storage: "Redis"
+    key_pattern: "ws_token:{token}"
+    ttl: 3600
+    data:
+      user_id: "uuid"
+      session_id: "uuid"
+      permissions: "array"
+
+# ================================
+# 10. Vector Store Models
+# ================================
+vector_models:
+  book_embedding:
+    collection: "books"
+    fields:
+      id: "string"
+      book_id: "uuid"
+      chunk_id: "integer"
+      text: "string"
+      embedding: "vector[1536]"
+      metadata:
+        title: "string"
+        author: "string"
+        chapter: "string"
+        page: "integer"
+
+  question_embedding:
+    collection: "questions"
+    fields:
+      id: "string"
+      question: "string"
+      embedding: "vector[1536]"
+      book_ids: "uuid[]"
+      relevance_scores: "float[]"
+
+# ================================
+# Contract Validation Rules
+# ================================
+validation_rules:
+  data_integrity:
+    - id: "DATA001"
+      rule: "All UUIDs must be valid version 4"
+      severity: "ERROR"
+
+    - id: "DATA002"
+      rule: "Foreign keys must reference existing records"
+      severity: "ERROR"
+
+    - id: "DATA003"
+      rule: "Unique constraints must be enforced"
+      severity: "ERROR"
+
+    - id: "DATA004"
+      rule: "Required fields cannot be null"
+      severity: "ERROR"
+
+  business_rules:
+    - id: "BIZ001"
+      rule: "User quota must not exceed membership limit"
+      severity: "ERROR"
+
+    - id: "BIZ002"
+      rule: "Dialogue sessions must belong to authenticated users"
+      severity: "ERROR"
+
+    - id: "BIZ003"
+      rule: "Payment orders must have valid amounts"
+      severity: "ERROR"
+
+  performance:
+    - id: "PERF001"
+      rule: "All foreign keys must have indexes"
+      severity: "WARNING"
+
+    - id: "PERF002"
+      rule: "Frequently queried fields must be indexed"
+      severity: "WARNING"
+
+    - id: "PERF003"
+      rule: "JSONB fields should not exceed 1MB"
+      severity: "WARNING"

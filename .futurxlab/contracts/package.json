@@ -1,0 +1,14 @@
+{
+  "name": "inknowing-contract-validator",
+  "version": "1.0.0",
+  "description": "Contract validation tool for InKnowing MVP",
+  "main": "validate.js",
+  "scripts": {
+    "validate": "node validate.js"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "glob": "^8.0.3",
+    "chalk": "^4.1.2"
+  }
+}

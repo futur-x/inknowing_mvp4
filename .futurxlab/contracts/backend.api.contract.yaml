@@ -1,0 +1,626 @@
+# InKnowing MVP 4.0 - Backend API Contract
+# Contract-Driven Development (CDD) - 后端API契约
+# Version: 1.0.0
+# Generated: 2025-09-21
+# Purpose: Define and enforce backend API standards
+
+contract:
+  version: "1.0.0"
+  name: "InKnowing Backend API"
+  type: "backend-api"
+
+# ================================
+# 1. API Configuration
+# ================================
+api_config:
+  base_path: "/v1"
+  version: "1.0.0"
+  protocol: "HTTP/1.1"
+  content_type: "application/json"
+
+  server:
+    development:
+      host: "localhost"
+      port: 8888
+      url: "http://localhost:8888"
+
+    production:
+      host: "api.inknowing.com"
+      port: 443
+      url: "https://api.inknowing.com"
+
+# ================================
+# 2. Authentication Endpoints
+# ================================
+endpoints:
+  auth:
+    register:
+      method: "POST"
+      path: "/auth/register"
+      request:
+        body:
+          username: "string, required, 3-50 chars"
+          password: "string, required, 8+ chars"
+          phone: "string, optional"
+          email: "string, optional"
+      response:
+        success:
+          status: 201
+          body:
+            user: "User object"
+            access_token: "string (cookie)"
+            refresh_token: "string (cookie)"
+        errors:
+          400: "Invalid input data"
+          409: "User already exists"
+
+    login:
+      method: "POST"
+      path: "/auth/login"
+      request:
+        body:
+          username: "string, required"
+          password: "string, required"
+      response:
+        success:
+          status: 200
+          body:
+            user: "User object"
+            access_token: "string (cookie)"
+            refresh_token: "string (cookie)"
+        errors:
+          401: "Invalid credentials"
+          404: "User not found"
+
+    logout:
+      method: "POST"
+      path: "/auth/logout"
+      authentication: "required"
+      response:
+        success:
+          status: 200
+          body:
+            message: "Logged out successfully"
+
+    refresh:
+      method: "POST"
+      path: "/auth/refresh"
+      request:
+        cookies:
+          refresh_token: "required"
+      response:
+        success:
+          status: 200
+          body:
+            access_token: "string (cookie)"
+        errors:
+          401: "Invalid or expired refresh token"
+
+    verify_code:
+      method: "POST"
+      path: "/auth/verify-code"
+      request:
+        body:
+          phone: "string, required"
+          code: "string, required, 6 digits"
+      response:
+        success:
+          status: 200
+          body:
+            verified: "boolean"
+        errors:
+          400: "Invalid code"
+          404: "Code not found or expired"
+
+# ================================
+# 3. User Endpoints
+# ================================
+  users:
+    profile:
+      method: "GET"
+      path: "/users/profile"
+      authentication: "required"
+      response:
+        success:
+          status: 200
+          body:
+            id: "uuid"
+            username: "string"
+            phone: "string"
+            email: "string"
+            nickname: "string"
+            avatar: "string"
+            bio: "string"
+            membership_type: "enum[free,basic,premium,super]"
+            created_at: "datetime"
+
+    update_profile:
+      method: "PATCH"
+      path: "/users/profile"
+      authentication: "required"
+      request:
+        body:
+          nickname: "string, optional"
+          avatar: "string, optional"
+          bio: "string, optional"
+          email: "string, optional"
+      response:
+        success:
+          status: 200
+          body: "Updated user profile"
+
+    membership:
+      method: "GET"
+      path: "/users/membership"
+      authentication: "required"
+      response:
+        success:
+          status: 200
+          body:
+            type: "enum[free,basic,premium,super]"
+            status: "enum[active,expired,cancelled]"
+            expires_at: "datetime"
+            dialogue_quota: "integer"
+            used_quota: "integer"
+
+    upgrade_membership:
+      method: "POST"
+      path: "/users/membership/upgrade"
+      authentication: "required"
+      request:
+        body:
+          plan_type: "enum[basic,premium,super]"
+          payment_method: "enum[wechat,alipay,stripe]"
+      response:
+        success:
+          status: 200
+          body:
+            order_id: "string"
+            payment_url: "string"
+
+    quota:
+      method: "GET"
+      path: "/users/quota"
+      authentication: "required"
+      response:
+        success:
+          status: 200
+          body:
+            total: "integer"
+            used: "integer"
+            remaining: "integer"
+            reset_date: "datetime"
+
+# ================================
+# 4. Book Endpoints
+# ================================
+  books:
+    list:
+      method: "GET"
+      path: "/books"
+      query_params:
+        page: "integer, default=1"
+        limit: "integer, default=20, max=100"
+        sort: "enum[popular,newest,rating]"
+        category: "string, optional"
+      response:
+        success:
+          status: 200
+          body:
+            items: "Book[] array"
+            total: "integer"
+            page: "integer"
+            pages: "integer"
+
+    popular:
+      method: "GET"
+      path: "/books/popular"
+      query_params:
+        limit: "integer, default=10"
+      response:
+        success:
+          status: 200
+          body:
+            items: "Book[] array"
+
+    detail:
+      method: "GET"
+      path: "/books/{id}"
+      path_params:
+        id: "uuid, required"
+      response:
+        success:
+          status: 200
+          body:
+            id: "uuid"
+            title: "string"
+            author: "string"
+            description: "string"
+            cover_image: "string"
+            category: "string"
+            tags: "string[]"
+            rating: "float"
+            dialogue_count: "integer"
+        errors:
+          404: "Book not found"
+
+    characters:
+      method: "GET"
+      path: "/books/{id}/characters"
+      path_params:
+        id: "uuid, required"
+      response:
+        success:
+          status: 200
+          body:
+            items: "Character[] array"
+        errors:
+          404: "Book not found"
+
+# ================================
+# 5. Search Endpoints
+# ================================
+  search:
+    question_search:
+      method: "GET"
+      path: "/search"
+      query_params:
+        q: "string, required"
+        limit: "integer, default=10"
+        type: "enum[semantic,keyword]"
+      response:
+        success:
+          status: 200
+          body:
+            results: "SearchResult[] array"
+            total: "integer"
+
+    book_search:
+      method: "GET"
+      path: "/search/books"
+      query_params:
+        q: "string, required"
+        category: "string, optional"
+        author: "string, optional"
+      response:
+        success:
+          status: 200
+          body:
+            results: "Book[] array"
+            total: "integer"
+
+# ================================
+# 6. Dialogue Endpoints
+# ================================
+  dialogues:
+    start_book_dialogue:
+      method: "POST"
+      path: "/dialogues/book/start"
+      authentication: "required"
+      request:
+        body:
+          book_id: "uuid, required"
+          initial_message: "string, optional"
+      response:
+        success:
+          status: 201
+          body:
+            session_id: "uuid"
+            book: "Book object"
+            context: "string"
+            ws_url: "string"
+
+    start_character_dialogue:
+      method: "POST"
+      path: "/dialogues/character/start"
+      authentication: "required"
+      request:
+        body:
+          character_id: "uuid, required"
+          book_id: "uuid, required"
+          initial_message: "string, optional"
+      response:
+        success:
+          status: 201
+          body:
+            session_id: "uuid"
+            character: "Character object"
+            context: "string"
+            ws_url: "string"
+
+    send_message:
+      method: "POST"
+      path: "/dialogues/{id}/messages"
+      authentication: "required"
+      path_params:
+        id: "uuid, session_id"
+      request:
+        body:
+          content: "string, required"
+          type: "enum[text,voice], default=text"
+      response:
+        success:
+          status: 200
+          body:
+            message_id: "uuid"
+            response: "string (AI response)"
+
+    get_messages:
+      method: "GET"
+      path: "/dialogues/{id}/messages"
+      authentication: "required"
+      path_params:
+        id: "uuid, session_id"
+      query_params:
+        page: "integer, default=1"
+        limit: "integer, default=50"
+      response:
+        success:
+          status: 200
+          body:
+            messages: "Message[] array"
+            total: "integer"
+
+    get_context:
+      method: "GET"
+      path: "/dialogues/{id}/context"
+      authentication: "required"
+      path_params:
+        id: "uuid, session_id"
+      response:
+        success:
+          status: 200
+          body:
+            context: "string"
+            book_info: "object"
+            character_info: "object, optional"
+
+    history:
+      method: "GET"
+      path: "/dialogues/history"
+      authentication: "required"
+      query_params:
+        page: "integer, default=1"
+        limit: "integer, default=20"
+      response:
+        success:
+          status: 200
+          body:
+            sessions: "DialogueSession[] array"
+            total: "integer"
+
+# ================================
+# 7. Upload Endpoints
+# ================================
+  uploads:
+    check:
+      method: "POST"
+      path: "/uploads/check"
+      authentication: "required"
+      request:
+        body:
+          filename: "string"
+          file_hash: "string"
+      response:
+        success:
+          status: 200
+          body:
+            exists: "boolean"
+            upload_id: "string, if exists"
+
+    upload:
+      method: "POST"
+      path: "/uploads"
+      authentication: "required"
+      request:
+        content_type: "multipart/form-data"
+        body:
+          file: "file, required"
+          title: "string, required"
+          author: "string, required"
+          description: "string, optional"
+      response:
+        success:
+          status: 201
+          body:
+            upload_id: "uuid"
+            status: "enum[processing,completed,failed]"
+
+    status:
+      method: "GET"
+      path: "/uploads/{id}"
+      authentication: "required"
+      path_params:
+        id: "uuid, upload_id"
+      response:
+        success:
+          status: 200
+          body:
+            status: "enum[processing,completed,failed]"
+            progress: "integer (0-100)"
+            book_id: "uuid, if completed"
+            error: "string, if failed"
+
+    user_uploads:
+      method: "GET"
+      path: "/uploads/my"
+      authentication: "required"
+      response:
+        success:
+          status: 200
+          body:
+            uploads: "Upload[] array"
+
+# ================================
+# 8. WebSocket Endpoints
+# ================================
+  websocket:
+    dialogue:
+      path: "/ws/dialogue/{session_id}"
+      protocol: "WebSocket"
+      authentication: "Bearer token in query or cookie"
+      messages:
+        client_to_server:
+          type: "message"
+          payload:
+            content: "string"
+            timestamp: "datetime"
+
+        server_to_client:
+          - type: "message"
+            payload:
+              content: "string"
+              role: "enum[assistant,user]"
+              timestamp: "datetime"
+
+          - type: "stream_chunk"
+            payload:
+              chunk: "string"
+              done: "boolean"
+
+          - type: "error"
+            payload:
+              code: "string"
+              message: "string"
+
+          - type: "connection"
+            payload:
+              status: "enum[connected,disconnected]"
+
+# ================================
+# 9. Payment Endpoints
+# ================================
+  payment:
+    wechat_callback:
+      method: "POST"
+      path: "/payment/callback/wechat"
+      request:
+        body: "WeChat payment notification"
+      response:
+        success:
+          status: 200
+          body: "XML response"
+
+    alipay_callback:
+      method: "POST"
+      path: "/payment/callback/alipay"
+      request:
+        body: "Alipay payment notification"
+      response:
+        success:
+          status: 200
+          body: "success"
+
+    order_status:
+      method: "GET"
+      path: "/payment/orders/{id}"
+      authentication: "required"
+      path_params:
+        id: "string, order_id"
+      response:
+        success:
+          status: 200
+          body:
+            order_id: "string"
+            status: "enum[pending,paid,failed,refunded]"
+            amount: "decimal"
+            created_at: "datetime"
+
+# ================================
+# 10. Response Standards
+# ================================
+response_format:
+  success:
+    structure:
+      data: "Response data object or array"
+      message: "Optional success message"
+      timestamp: "ISO 8601 datetime"
+
+  error:
+    structure:
+      error: "Error code (e.g., VALIDATION_ERROR)"
+      message: "Human-readable error message"
+      details: "Optional error details object"
+      timestamp: "ISO 8601 datetime"
+
+  pagination:
+    structure:
+      items: "Array of items"
+      total: "Total count"
+      page: "Current page"
+      pages: "Total pages"
+      limit: "Items per page"
+
+# ================================
+# 11. Authentication & Security
+# ================================
+security:
+  authentication:
+    type: "JWT + Cookie"
+    cookie_config:
+      access_token:
+        httpOnly: true
+        secure: true
+        sameSite: "strict"
+        maxAge: 1800  # 30 minutes
+
+      refresh_token:
+        httpOnly: true
+        secure: true
+        sameSite: "strict"
+        maxAge: 604800  # 7 days
+
+  rate_limiting:
+    default: "100 requests per minute"
+    auth_endpoints: "5 requests per minute"
+    upload_endpoints: "10 requests per hour"
+
+  cors:
+    allowed_origins:
+      - "http://localhost:3555"
+      - "https://inknowing.com"
+    allowed_methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    allowed_headers: ["Content-Type", "Authorization"]
+    allow_credentials: true
+
+# ================================
+# Contract Validation Rules
+# ================================
+validation_rules:
+  api:
+    - id: "API001"
+      rule: "All endpoints must return standard response format"
+      severity: "ERROR"
+
+    - id: "API002"
+      rule: "Protected endpoints must validate authentication"
+      severity: "ERROR"
+
+    - id: "API003"
+      rule: "Input data must be validated before processing"
+      severity: "ERROR"
+
+    - id: "API004"
+      rule: "Errors must include appropriate HTTP status codes"
+      severity: "ERROR"
+
+    - id: "API005"
+      rule: "Pagination must be implemented for list endpoints"
+      severity: "WARNING"
+
+  security:
+    - id: "SEC001"
+      rule: "Passwords must be hashed with bcrypt"
+      severity: "ERROR"
+
+    - id: "SEC002"
+      rule: "JWT tokens must expire"
+      severity: "ERROR"
+
+    - id: "SEC003"
+      rule: "Rate limiting must be enforced"
+      severity: "WARNING"
+
+    - id: "SEC004"
+      rule: "CORS must be properly configured"
+      severity: "ERROR"
