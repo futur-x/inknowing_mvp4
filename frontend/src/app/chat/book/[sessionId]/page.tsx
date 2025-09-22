@@ -22,6 +22,8 @@ export default function BookDialoguePage() {
   const { isAuthenticated } = useAuthStore()
   const activeSessions = useChatStore(state => state.activeSessions)
   const loadMessages = useChatStore(state => state.loadMessages)
+  const connectWebSocket = useChatStore(state => state.connectWebSocket)
+  const setCurrentSession = useChatStore(state => state.setCurrentSession)
 
   // Get current session without causing re-renders
   const currentSession = activeSessions.get(sessionId)
@@ -49,13 +51,14 @@ export default function BookDialoguePage() {
         setIsLoading(true)
         setError(null)
 
-        if (!hasSession) {
-          // Session not in store, load from API
-          await loadMessages(sessionId)
-        } else if (messageCount === 0) {
-          // Session exists but no messages, load them
-          await loadMessages(sessionId)
-        }
+        // Always load messages from API on mount
+        await loadMessages(sessionId)
+
+        // Set as current session
+        setCurrentSession(sessionId)
+
+        // Connect WebSocket for real-time messaging
+        connectWebSocket(sessionId)
 
         setIsLoading(false)
       } catch (error) {

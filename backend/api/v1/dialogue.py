@@ -397,16 +397,18 @@ async def dialogue_websocket(
                             message=DialogueMessageCreate(message=data.get("content"))
                         )
 
-                        # Send response
-                        ws_response = WSAssistantMessage(
-                            content=response.content,
-                            references=response.references if response.references else [],
-                            timestamp=response.timestamp
-                        )
-                        # Use dict with datetime conversion
-                        response_dict = ws_response.dict()
-                        response_dict['timestamp'] = response_dict['timestamp'].isoformat() if response_dict.get('timestamp') else None
-                        await websocket.send_json(response_dict)
+                        # Send AI response in correct format for frontend
+                        await websocket.send_json({
+                            "type": "ai_response",
+                            "content": response.content,
+                            "messageId": response.id,
+                            "timestamp": response.timestamp.isoformat() if hasattr(response.timestamp, 'isoformat') else response.timestamp,
+                            "metadata": {
+                                "references": response.references if response.references else [],
+                                "tokensUsed": response.tokens_used,
+                                "modelUsed": response.model_used
+                            }
+                        })
                     except Exception as e:
                         await websocket.send_json(
                             WSError(message=str(e)).dict()
