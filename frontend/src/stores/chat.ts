@@ -127,9 +127,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
   // Send message - Business Logic: User Input → AI Response
   sendMessage: async (sessionId: string, content: string) => {
     try {
-      const session = get().activeSessions.get(sessionId)
+      let session = get().activeSessions.get(sessionId)
+
+      // If session not found in store, try to recover it
       if (!session) {
-        throw new Error('Session not found')
+        console.warn(`Session ${sessionId} not found in store, attempting to recover...`)
+
+        // Try to load session from backend
+        try {
+          const sessionData = await api.dialogues.getSession(sessionId)
+          if (sessionData) {
+            // Add recovered session to store
+            get().addSession(sessionData)
+            session = get().activeSessions.get(sessionId)
+            console.log(`Session ${sessionId} recovered successfully`)
+          }
+        } catch (error) {
+          console.error(`Failed to recover session ${sessionId}:`, error)
+          // Session doesn't exist or expired
+          throw new Error('Session not found or expired. Please start a new conversation.')
+        }
+      }
+
+      if (!session) {
+        throw new Error('Failed to restore session')
       }
 
       // Add to message queue

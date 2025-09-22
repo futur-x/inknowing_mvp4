@@ -62,7 +62,7 @@ export function useBooks(params?: BookQueryParams, config?: SWRConfiguration) {
     `books${queryString ? `?${queryString}` : ''}`,
     async () => {
       const response = await apiClient.get(`books${queryString ? `?${queryString}` : ''}`);
-      return transformBookListResponse(response.data);
+      return transformBookListResponse(response);
     },
     { ...defaultSWRConfig, ...config }
   );
@@ -115,7 +115,7 @@ export function useBooksInfinite(params?: Omit<BookQueryParams, 'page'>, config?
     getKey,
     async (url) => {
       const response = await apiClient.get(url);
-      return transformBookListResponse(response.data);
+      return transformBookListResponse(response);
     },
     {
       ...defaultSWRConfig,
@@ -194,7 +194,7 @@ export function useBook(bookId: string | null, config?: SWRConfiguration) {
     async () => {
       if (!bookId) return null;
       const response = await apiClient.get(`books/${bookId}`);
-      return transformBookData(response.data);
+      return transformBookData(response);
     },
     { ...defaultSWRConfig, ...config }
   );
@@ -224,7 +224,7 @@ export function useBookSearch(
     async () => {
       if (!debouncedQuery) return null;
       const response = await apiClient.get<SearchResponse>(`search?q=${encodeURIComponent(debouncedQuery)}&type=title`);
-      return response.data;
+      return response;
     },
     { ...defaultSWRConfig, ...config }
   );
@@ -268,7 +268,7 @@ export function useGeneralSearch(
       if (type !== 'all') searchParams.append('type', type);
 
       const response = await apiClient.get<SearchResponse>(`search?${searchParams.toString()}`);
-      const data = response.data;
+      const data = response;
 
       // Process results to add client-side relevance scoring if needed
       if (data?.results) {
@@ -442,7 +442,7 @@ export function useIntelligentSearch(
   const { data, error, isLoading, isValidating, mutate } = useSWR<SearchResponse>(
     searchParams ? `search?${searchParams}` : null,
     () => searchParams
-      ? apiClient.get(`search?${searchParams}`).then(res => res.data)
+      ? apiClient.get(`search?${searchParams}`).then(res => res)
       : null,
     { ...defaultSWRConfig, ...config }
   );
@@ -512,7 +512,7 @@ export function useRecentlyViewedBooks(limit: number = 5) {
   const { data: books, isLoading } = useSWR<Book[]>(
     bookIds.length > 0 ? `/books/batch?ids=${bookIds.join(',')}` : null,
     () => bookIds.length > 0
-      ? apiClient.get(`books/batch?ids=${bookIds.join(',')}`).then(res => res.data)
+      ? apiClient.get(`books/batch?ids=${bookIds.join(',')}`).then(res => res)
       : [],
     {
       revalidateOnFocus: false,
@@ -539,7 +539,7 @@ export function useRecentlyViewedBooks(limit: number = 5) {
  * Improves perceived performance
  */
 export async function prefetchBook(bookId: string) {
-  const data = await apiClient.get(`books/${bookId}`).then(res => res.data);
+  const data = await apiClient.get(`books/${bookId}`).then(res => res);
   mutate(`/books/${bookId}`, data, false);
   return data;
 }

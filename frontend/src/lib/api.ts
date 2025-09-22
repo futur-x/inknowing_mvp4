@@ -419,6 +419,8 @@ export const api = {
         character_id: characterId,
         initial_message: initialMessage
       }),
+    getSession: (sessionId: string) =>
+      apiClient.get(`dialogues/${sessionId}`),
     sendMessage: (sessionId: string, message: string) =>
       apiClient.post(`dialogues/${sessionId}/messages`, { message }),
     getMessages: (sessionId: string, page = 1, limit = 20) =>
