@@ -57,6 +57,9 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const [streamingContent, setStreamingContent] = useState('')
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>()
   const reconnectAttemptsRef = useRef(0)
+  const isConnectingRef = useRef(false)
+  const lastSessionIdRef = useRef<string | null>(null)
+  const cleanupRef = useRef<(() => void) | null>(null)
 
   // Get current session
   const session = sessionId
@@ -77,60 +80,109 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     }
   }, [sessionId, currentSessionId, setCurrentSession])
 
-  // WebSocket connection management
+  // WebSocket connection management with optimized dependencies
   useEffect(() => {
     if (!session || !autoConnect) return
 
-    // Connect WebSocket through store
-    connectWebSocket(session.id)
+    const sessionId = session.session.id
 
-    // Handle connection state changes
-    const handleStateChange = () => {
-      const currentSession = activeSessions.get(session.id)
-      if (currentSession) {
-        if (currentSession.wsState === 'connected') {
-          reconnectAttemptsRef.current = 0
-          onConnect?.()
-          // Flush queued messages
-          flushMessageQueue(session.id)
-        } else if (currentSession.wsState === 'disconnected') {
-          onDisconnect?.()
-          if (autoReconnect && reconnectAttemptsRef.current < maxRetries) {
-            reconnectTimeoutRef.current = setTimeout(() => {
-              reconnectAttemptsRef.current++
-              connectWebSocket(session.id)
-            }, reconnectInterval)
-          }
-        }
-      }
+    // Prevent duplicate connections for the same session
+    if (lastSessionIdRef.current === sessionId && isConnectingRef.current) {
+      return
     }
 
-    // Monitor session state
-    const interval = setInterval(handleStateChange, 500)
+    // Track current session to prevent duplicates
+    lastSessionIdRef.current = sessionId
 
+    // Prevent concurrent connection attempts
+    if (isConnectingRef.current) {
+      return
+    }
+
+    // Mark as connecting
+    isConnectingRef.current = true
+
+    // Connect WebSocket through store
+    connectWebSocket(sessionId)
+
+    // Setup cleanup function
+    const cleanup = () => {
+      isConnectingRef.current = false
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = undefined
+      }
+      disconnectWebSocket(sessionId)
+    }
+
+    // Store cleanup for external access
+    cleanupRef.current = cleanup
+
+    return cleanup
+  }, [session?.session.id, autoConnect]) // Simplified dependencies
+
+  // Separate effect for monitoring connection state changes
+  useEffect(() => {
+    if (!session) return
+
+    const sessionId = session.session.id
+    const currentSession = activeSessions.get(sessionId)
+
+    if (!currentSession) return
+
+    // Handle state-specific logic
+    if (currentSession.wsState === 'connected') {
+      reconnectAttemptsRef.current = 0
+      isConnectingRef.current = false
+      onConnect?.()
+      // Flush queued messages
+      flushMessageQueue(sessionId)
+    } else if (currentSession.wsState === 'disconnected' && !isConnectingRef.current) {
+      onDisconnect?.()
+
+      // Handle auto-reconnect with exponential backoff
+      if (autoReconnect && reconnectAttemptsRef.current < maxRetries) {
+        // Clear any existing reconnect timer
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current)
+        }
+
+        // Calculate exponential backoff delay
+        const backoffDelay = reconnectInterval * Math.pow(1.5, reconnectAttemptsRef.current)
+
+        reconnectTimeoutRef.current = setTimeout(() => {
+          if (!isConnectingRef.current && session) {
+            reconnectAttemptsRef.current++
+            isConnectingRef.current = true
+            connectWebSocket(sessionId)
+          }
+        }, backoffDelay)
+      }
+    } else if (currentSession.wsState === 'error') {
+      isConnectingRef.current = false
+    }
+  }, [
+    session?.session.id,
+    activeSessions.get(session?.session.id || '')?.wsState,
+    autoReconnect,
+    maxRetries,
+    reconnectInterval
+  ]) // Monitor only essential state changes
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
-      clearInterval(interval)
+      // Clean up on component unmount
+      if (cleanupRef.current) {
+        cleanupRef.current()
+      }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
       }
-      if (session) {
-        disconnectWebSocket(session.id)
-        onDisconnect?.()
-      }
+      lastSessionIdRef.current = null
+      isConnectingRef.current = false
     }
-  }, [
-    session,
-    autoConnect,
-    autoReconnect,
-    reconnectInterval,
-    maxRetries,
-    connectWebSocket,
-    disconnectWebSocket,
-    flushMessageQueue,
-    activeSessions,
-    onConnect,
-    onDisconnect,
-  ])
+  }, [])
 
   // Monitor typing and streaming state from session
   useEffect(() => {
@@ -177,7 +229,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
       try {
         // Send through store (will use WebSocket if connected, HTTP otherwise)
-        await storeSendMessage(session.id, content)
+        await storeSendMessage(session.session.id, content)
       } catch (error) {
         // If WebSocket fails, message is queued automatically
         console.error('Failed to send message:', error)
@@ -200,7 +252,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       }
 
       try {
-        await storeSendMessage(session.id, message.content)
+        await storeSendMessage(session.session.id, message.content)
       } catch (error) {
         throw error
       }
@@ -213,7 +265,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     if (!session) return
 
     const currentPage = Math.ceil(messages.length / 50) + 1
-    await storeLoadMessages(session.id, currentPage)
+    await storeLoadMessages(session.session.id, currentPage)
   }, [session, messages.length, storeLoadMessages])
 
   // Clear error
@@ -225,7 +277,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const endSession = useCallback(async () => {
     if (!session) return
 
-    await storeEndSession(session.id)
+    await storeEndSession(session.session.id)
   }, [session, storeEndSession])
 
   // Export chat
@@ -253,7 +305,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
         case 'md':
           content = `# Chat Export\n\n`
           if (options.includeMetadata && session) {
-            content += `**Session ID**: ${session.id}\n`
+            content += `**Session ID**: ${session.session.id}\n`
             content += `**Book**: ${session.book_title}\n`
             if (session.character_name) {
               content += `**Character**: ${session.character_name}\n`
@@ -346,19 +398,19 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   // Stream control functions
   const handlePauseStream = useCallback(() => {
     if (session?.id) {
-      pauseStreaming(session.id)
+      pauseStreaming(session.session.id)
     }
   }, [session?.id, pauseStreaming])
 
   const handleResumeStream = useCallback(() => {
     if (session?.id) {
-      resumeStreaming(session.id)
+      resumeStreaming(session.session.id)
     }
   }, [session?.id, resumeStreaming])
 
   const handleCancelStream = useCallback(() => {
     if (session?.id) {
-      cancelStreaming(session.id)
+      cancelStreaming(session.session.id)
     }
   }, [session?.id, cancelStreaming])
 

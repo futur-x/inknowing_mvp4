@@ -383,6 +383,9 @@ async def dialogue_websocket(
                 data = await websocket.receive_json()
 
                 if data.get("type") == "message":
+                    # Extract the frontend message ID for response correlation
+                    frontend_message_id = data.get("messageId")
+
                     # Send typing indicator
                     await websocket.send_json(
                         WSTypingIndicator(isTyping=True).dict()
@@ -398,15 +401,17 @@ async def dialogue_websocket(
                         )
 
                         # Send AI response in correct format for frontend
+                        # Use the frontend's messageId for proper correlation
                         await websocket.send_json({
                             "type": "ai_response",
                             "content": response.content,
-                            "messageId": response.id,
+                            "messageId": frontend_message_id or response.id,  # Prefer frontend ID for correlation
                             "timestamp": response.timestamp.isoformat() if hasattr(response.timestamp, 'isoformat') else response.timestamp,
                             "metadata": {
                                 "references": response.references if response.references else [],
                                 "tokensUsed": response.tokens_used,
-                                "modelUsed": response.model_used
+                                "modelUsed": response.model_used,
+                                "dbMessageId": response.id  # Keep DB ID for reference
                             }
                         })
                     except Exception as e:

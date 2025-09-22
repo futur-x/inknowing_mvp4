@@ -201,7 +201,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
   // Connect WebSocket for real-time messaging
   connectWebSocket: (sessionId: string) => {
     const session = get().activeSessions.get(sessionId)
-    if (!session || session.ws) return
+
+    // Prevent duplicate connections
+    if (!session) return
+    if (session.ws && session.wsState !== 'disconnected' && session.wsState !== 'error') {
+      console.log(`WebSocket already exists for session ${sessionId} in state: ${session.wsState}`)
+      return
+    }
 
     try {
       const token = api.getAuthToken()
@@ -417,8 +423,31 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const data = await api.dialogues.getMessages(sessionId, page, 50)
       const messages: DialogueMessage[] = data.messages
 
-      // Update session with messages
-      const session = get().activeSessions.get(sessionId)
+      // Get or create session
+      let session = get().activeSessions.get(sessionId)
+
+      // If session doesn't exist, create a minimal one to allow messaging
+      if (!session) {
+        // Create a minimal session that will work for messaging
+        // The book_id will be empty but the sessionId is what matters for the backend
+        const minimalSession: DialogueSession = {
+          id: sessionId,
+          user_id: '',
+          book_id: 'placeholder', // Use placeholder to pass validation
+          character_id: undefined,
+          dialogue_type: 'book_chat',
+          status: 'active',
+          context: '',
+          message_count: messages.length,
+          created_at: messages.length > 0 ? messages[0].timestamp : new Date().toISOString(),
+          updated_at: messages.length > 0 ? messages[messages.length - 1].timestamp : new Date().toISOString()
+        }
+
+        console.log('Creating minimal session for:', sessionId)
+        get().addSession(minimalSession)
+        session = get().activeSessions.get(sessionId)
+      }
+
       if (session) {
         const updatedSession = {
           ...session,

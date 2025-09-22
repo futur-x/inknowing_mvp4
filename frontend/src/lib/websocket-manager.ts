@@ -26,6 +26,7 @@ export class WebSocketManagerImpl implements WebSocketManager {
   private reconnectTimer: NodeJS.Timeout | null = null
   private heartbeatTimer: NodeJS.Timeout | null = null
   private messageTimeoutTimers = new Map<string, NodeJS.Timeout>()
+  private pendingMessageId: string | null = null  // Track pending message for response matching
 
   // Event handling
   private eventHandlers = new Map<WebSocketEventType, Set<WebSocketEventHandler>>()
@@ -79,8 +80,8 @@ export class WebSocketManagerImpl implements WebSocketManager {
       ...config
     }
 
-    // Auto-connect on creation
-    this.connect()
+    // Don't auto-connect on creation to prevent timing issues
+    // Connection should be explicitly initiated by the consumer
   }
 
   // Connection management
@@ -174,10 +175,15 @@ export class WebSocketManagerImpl implements WebSocketManager {
   }
 
   sendMessage(content: string): void {
+    const messageId = this.generateMessageId()
+
+    // Store the messageId for matching with response
+    this.pendingMessageId = messageId
+
     this.send({
-      type: 'user_message',
+      type: 'message',  // Match backend expectation
       content,
-      messageId: this.generateMessageId()
+      messageId
     })
   }
 
@@ -393,6 +399,22 @@ export class WebSocketManagerImpl implements WebSocketManager {
 
         case 'typing':
           this.emit('typing', message)
+          break
+
+        case 'ai_response':
+          // Clear timeout timer for AI responses
+          // Use the pending message ID since backend doesn't echo our messageId
+          if (this.pendingMessageId) {
+            const timer = this.messageTimeoutTimers.get(this.pendingMessageId)
+            if (timer) {
+              clearTimeout(timer)
+              this.messageTimeoutTimers.delete(this.pendingMessageId)
+            }
+            // Add our messageId to the response for consistency
+            message.messageId = this.pendingMessageId
+            this.pendingMessageId = null
+          }
+          this.emit('message', message)
           break
 
         case 'error':
