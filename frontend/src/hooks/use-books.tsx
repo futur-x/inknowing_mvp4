@@ -167,8 +167,9 @@ export function usePopularBooks(
     `books/popular?period=${period}&limit=${limit}`,
     async () => {
       const response = await apiClient.get(`books/popular?period=${period}&limit=${limit}`);
+      // Fix: The API returns the data structure directly, not nested in data property
       return {
-        books: transformBooksData(response.data.books || [])
+        books: transformBooksData(response.books || [])
       };
     },
     { ...defaultSWRConfig, ...config }
@@ -464,8 +465,12 @@ export function useIntelligentSearch(
  */
 export function useBookRecommendations(limit: number = 5, config?: SWRConfiguration) {
   const { data, error, isLoading, isValidating, mutate } = useSWR<Book[]>(
-    '/books/recommendations',
-    () => apiClient.get(`books/recommendations?limit=${limit}`).then(res => res.data),
+    `books/recommendations?limit=${limit}`,
+    async () => {
+      const response = await apiClient.get(`books/recommendations?limit=${limit}`);
+      // Fix: Handle the response structure consistently
+      return transformBooksData(response.books || response || []);
+    },
     {
       ...defaultSWRConfig,
       ...config,
