@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +20,7 @@ import { Book } from '@/types/book';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
-export default function ChatIndexPage() {
+function ChatIndexPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();
@@ -46,13 +47,6 @@ export default function ChatIndexPage() {
       }
     }
   }, [searchParams, isAuthenticated]);
-
-  // Check authentication
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/auth/login?redirect=/chat');
-    }
-  }, [isAuthenticated, router]);
 
   const loadBooks = async () => {
     try {
@@ -318,5 +312,13 @@ export default function ChatIndexPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function ChatIndexPage() {
+  return (
+    <AuthGuard redirectTo="/auth/login?redirect=/chat">
+      <ChatIndexPageContent />
+    </AuthGuard>
   );
 }

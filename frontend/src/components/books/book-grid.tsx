@@ -212,21 +212,52 @@ export function BookGridInfinite({
   onLoadMore: () => void;
 }) {
   const observerRef = React.useRef<IntersectionObserver>();
-  const loadMoreRef = React.useCallback(
-    (node: HTMLDivElement | null) => {
-      if (isLoading) return;
-      if (observerRef.current) observerRef.current.disconnect();
+  const loadingRef = React.useRef(false);
 
-      observerRef.current = new IntersectionObserver(entries => {
-        if (entries[0].isIntersecting && hasMore) {
+  // Use useEffect to handle observer setup instead of useCallback
+  // This prevents recreation on every render
+  const observerTarget = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const target = observerTarget.current;
+    if (!target) return;
+
+    // Cleanup previous observer
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    // Don't create observer if loading or no more items
+    if (isLoading || !hasMore) return;
+
+    // Create new observer
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingRef.current) {
+          loadingRef.current = true;
           onLoadMore();
+          // Reset loading flag after a delay to prevent rapid fire
+          setTimeout(() => {
+            loadingRef.current = false;
+          }, 500);
         }
-      });
+      },
+      {
+        root: null,
+        rootMargin: '100px',
+        threshold: 0.1
+      }
+    );
 
-      if (node) observerRef.current.observe(node);
-    },
-    [isLoading, hasMore, onLoadMore]
-  );
+    observerRef.current.observe(target);
+
+    // Cleanup on unmount
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [hasMore, isLoading, onLoadMore]);
 
   return (
     <>
@@ -235,14 +266,17 @@ export function BookGridInfinite({
       {/* Load more trigger */}
       {hasMore && (
         <div
-          ref={loadMoreRef}
+          ref={observerTarget}
           className="flex justify-center py-8"
+          style={{ minHeight: '60px' }}
         >
-          {isLoading && (
+          {isLoading ? (
             <div className="flex items-center gap-2">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               <span className="text-sm text-muted-foreground">加载更多...</span>
             </div>
+          ) : (
+            <div className="h-8" />
           )}
         </div>
       )}

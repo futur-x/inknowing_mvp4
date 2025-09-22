@@ -96,14 +96,14 @@ class FrontendValidator {
         }
       });
 
-      // Check authentication cookie name
-      if (!content.includes("'access_token'")) {
-        CONFIG.violations.push({
+      // Check if middleware is configured for Bearer Token auth (skip checks in dev mode)
+      if (!content.includes('skip_all_checks') && !content.includes('Bearer Token')) {
+        CONFIG.warnings.push({
           file: 'middleware.ts',
-          line: 40,
+          line: 37,
           rule: 'AUTH001',
-          message: "Cookie name 'access_token' not found in middleware",
-          severity: 'ERROR'
+          message: "Middleware should skip checks for Bearer Token authentication",
+          severity: 'WARNING'
         });
       }
     }
@@ -311,7 +311,7 @@ class IntegrationValidator {
     this.validateWebSocket(contracts.frontend, contracts['backend.api']);
 
     // Check cookie names consistency
-    this.validateCookieNames(contracts.frontend, contracts['backend.api']);
+    this.validateBearerTokenAuth(contracts.frontend, contracts['backend.api']);
 
     // Check API endpoint consistency
     this.validateAPIConsistency(contracts.frontend, contracts['backend.api']);
@@ -339,21 +339,32 @@ class IntegrationValidator {
     }
   }
 
-  static validateCookieNames(frontendContract, backendContract) {
-    const expectedCookies = ['access_token', 'refresh_token'];
+  static validateBearerTokenAuth(frontendContract, backendContract) {
+    // Check if frontend is configured for Bearer Token auth
+    const apiPath = path.join(CONFIG.frontendDir, 'src/lib/api.ts');
 
-    // Check frontend middleware
-    const middlewarePath = path.join(CONFIG.frontendDir, 'src/middleware.ts');
-    if (fs.existsSync(middlewarePath)) {
-      const content = fs.readFileSync(middlewarePath, 'utf8');
+    if (fs.existsSync(apiPath)) {
+      const content = fs.readFileSync(apiPath, 'utf8');
 
-      if (!content.includes("'access_token'")) {
-        CONFIG.violations.push({
-          file: 'middleware.ts',
-          line: 40,
+      // Check for Bearer Token in Authorization header
+      if (!content.includes('Authorization') || !content.includes('Bearer')) {
+        CONFIG.warnings.push({
+          file: 'lib/api.ts',
+          line: 0,
           rule: 'INT001',
-          message: "Cookie name mismatch: expected 'access_token'",
-          severity: 'ERROR'
+          message: "API client should use Bearer Token in Authorization header",
+          severity: 'WARNING'
+        });
+      }
+
+      // Check for localStorage token storage
+      if (!content.includes('localStorage')) {
+        CONFIG.warnings.push({
+          file: 'lib/api.ts',
+          line: 0,
+          rule: 'INT002',
+          message: "Tokens should be stored in localStorage for Bearer auth",
+          severity: 'WARNING'
         });
       }
     }

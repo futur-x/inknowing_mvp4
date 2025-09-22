@@ -1,28 +1,42 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ArrowLeft, Save, Camera } from 'lucide-react'
-import { useAuth } from '@/hooks/use-auth'
 import { toast } from '@/hooks/use-toast'
+import { useAuth } from '@/hooks/use-auth'
 
-export default function EditProfilePage() {
+function EditProfilePageContent() {
   const router = useRouter()
   const { user, updateProfile } = useAuth()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
-    username: user?.username || '',
-    email: user?.email || '',
-    bio: user?.bio || '',
-    location: user?.location || '',
-    interests: user?.interests || ''
+    username: '',
+    email: '',
+    bio: '',
+    location: '',
+    interests: ''
   })
   const [hasChanges, setHasChanges] = useState(false)
+
+  // Initialize form data with user data
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        username: user.username || '',
+        email: user.email || '',
+        bio: user.bio || '',
+        location: user.location || '',
+        interests: user.interests || ''
+      })
+    }
+  }, [user])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -204,5 +218,13 @@ export default function EditProfilePage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function EditProfilePage() {
+  return (
+    <AuthGuard redirectTo="/auth/login?redirect=/profile/edit">
+      <EditProfilePageContent />
+    </AuthGuard>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -43,7 +44,7 @@ interface ReadingHistory {
   progress: number // percentage
 }
 
-export default function HistoryPage() {
+function HistoryPageContent() {
   const router = useRouter()
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('dialogues')
@@ -339,5 +340,13 @@ export default function HistoryPage() {
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+export default function HistoryPage() {
+  return (
+    <AuthGuard redirectTo="/auth/login?redirect=/profile/history">
+      <HistoryPageContent />
+    </AuthGuard>
   )
 }

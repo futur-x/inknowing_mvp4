@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 import { motion } from 'framer-motion';
 import {
   CreditCard,
@@ -22,7 +23,7 @@ import { toast } from 'react-hot-toast';
 import { formatPrice, MembershipTier } from '@/lib/payment-utils';
 import { cn } from '@/lib/utils';
 
-export default function ManageMembershipPage() {
+function ManageMembershipPageContent() {
   const router = useRouter();
   const { profile: userInfo, setProfile: updateUserInfo } = useUserStore();
   const {
@@ -339,5 +340,13 @@ export default function ManageMembershipPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ManageMembershipPage() {
+  return (
+    <AuthGuard redirectTo="/auth/login?redirect=/membership/manage">
+      <ManageMembershipPageContent />
+    </AuthGuard>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth'
+import AuthStorage from '@/lib/auth-storage'
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -10,64 +11,81 @@ interface AuthGuardProps {
   redirectTo?: string  // Allow custom redirect path
 }
 
+/**
+ * AuthGuard Component - Bearer Token Authentication Guard
+ *
+ * This component protects routes by checking Bearer token authentication
+ * Uses localStorage for token storage and validates with backend API
+ */
 export function AuthGuard({ children, fallback, redirectTo = '/auth/login' }: AuthGuardProps) {
   const router = useRouter()
-  const { isAuthenticated, isHydrated, user, checkAuth } = useAuthStore()
+  const { checkAuth } = useAuthStore()
   const [isChecking, setIsChecking] = useState(true)
-  const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
     // Ensure we're in the browser environment
     if (typeof window === 'undefined') {
-      console.log('AuthGuard: Running on server, skipping auth check')
       return
     }
 
-    // Prevent multiple checks
-    if (hasCheckedAuth) {
-      return
-    }
+    const verifyAuth = async () => {
+      // Check for Bearer token in localStorage
+      const hasToken = AuthStorage.isAuthenticated()
 
-    // Mark that we've started checking
-    setHasCheckedAuth(true)
+      if (!hasToken) {
+        console.log('[AuthGuard] No token found, redirecting to login...')
+        const currentPath = window.location.pathname
+        const redirectUrl = `${redirectTo}?redirect=${encodeURIComponent(currentPath)}`
+        router.push(redirectUrl)
+        return
+      }
 
-    // Check authentication via API (cookies will be sent automatically)
-    const checkAuthStatus = async () => {
       try {
+        // Validate token with backend
         await checkAuth()
-        setIsChecking(false)
+
+        // Get updated auth state
+        const { isAuthenticated: isAuth, user } = useAuthStore.getState()
+
+        if (!isAuth || !user) {
+          console.log('[AuthGuard] Token invalid, redirecting to login...')
+          const currentPath = window.location.pathname
+          const redirectUrl = `${redirectTo}?redirect=${encodeURIComponent(currentPath)}`
+          router.push(redirectUrl)
+        } else {
+          console.log('[AuthGuard] User authenticated:', user.username)
+          setIsAuthenticated(true)
+          setIsChecking(false)
+        }
       } catch (error) {
-        console.log('AuthGuard: Auth check failed, redirecting to', redirectTo)
-        // No auth found, redirect to login
+        console.error('[AuthGuard] Auth check failed:', error)
         const currentPath = window.location.pathname
         const redirectUrl = `${redirectTo}?redirect=${encodeURIComponent(currentPath)}`
         router.push(redirectUrl)
       }
     }
 
-    // Check if user is already authenticated in store
-    if (isAuthenticated && user) {
-      console.log('AuthGuard: User is authenticated')
-      setIsChecking(false)
-    } else {
-      console.log('AuthGuard: Checking auth status...')
-      checkAuthStatus()
-    }
-  }, [isAuthenticated, user, router, checkAuth, hasCheckedAuth, redirectTo])
+    verifyAuth()
+  }, [checkAuth, router, redirectTo])
 
   // Show loading state while checking auth
   if (isChecking) {
     return fallback || (
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="h-8 w-8 mx-auto animate-spin rounded-full border-4 border-primary border-t-transparent" />
-            <p className="mt-4 text-muted-foreground">验证身份中...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">验证身份中...</p>
         </div>
       </div>
     )
   }
 
-  return <>{children}</>
+  // Only render children if authenticated
+  if (isAuthenticated) {
+    return <>{children}</>
+  }
+
+  // Still redirecting
+  return null
 }

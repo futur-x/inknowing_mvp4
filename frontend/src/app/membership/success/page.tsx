@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 import { motion } from 'framer-motion';
 import {
   CheckCircle,
@@ -290,12 +291,14 @@ function SuccessContent() {
 
 export default function SuccessPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-      </div>
-    }>
-      <SuccessContent />
-    </Suspense>
+    <AuthGuard redirectTo="/auth/login?redirect=/membership/success">
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+        </div>
+      }>
+        <SuccessContent />
+      </Suspense>
+    </AuthGuard>
   );
 }

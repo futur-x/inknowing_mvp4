@@ -32,6 +32,12 @@ const authRoutes = [
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // In development mode, skip authentication checks entirely
+  // This allows for easier development with Bearer Token auth
+  if (process.env.NODE_ENV === 'development') {
+    return NextResponse.next();
+  }
+
   // Check if the current route is protected
   const isProtectedRoute = protectedRoutes.some(route =>
     pathname.startsWith(route)
@@ -42,26 +48,12 @@ export function middleware(request: NextRequest) {
     pathname.startsWith(route)
   );
 
-  // Get the auth token from cookies (using the cookie name set by backend)
-  const token = request.cookies.get('access_token')?.value;
+  // In production, we'll rely on client-side authentication
+  // The middleware just passes through and lets client components handle auth
+  // This is necessary for Bearer Token authentication to work properly
 
-  // If accessing a protected route without a token, redirect to login
-  if (isProtectedRoute && !token) {
-    const loginUrl = new URL('/auth/login', request.url);
-    // Add redirect parameter to return to original page after login
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // If accessing auth routes with a token, redirect to home or dashboard
-  if (isAuthRoute && token) {
-    // Check if there's a redirect parameter
-    const redirect = request.nextUrl.searchParams.get('redirect');
-    const targetUrl = redirect || '/';
-    return NextResponse.redirect(new URL(targetUrl, request.url));
-  }
-
-  // Allow the request to continue
+  // Allow all requests to continue
+  // Authentication will be handled by client-side components
   return NextResponse.next();
 }
 

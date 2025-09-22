@@ -5,12 +5,12 @@
 
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { AuthGuard } from '@/components/auth/AuthGuard'
 import { ChatContainer } from '@/components/chat/chat-container'
 import { Loader2 } from 'lucide-react'
 import { useChatStore } from '@/stores/chat'
-import { useAuthStore } from '@/stores/auth'
 
-export default function CharacterDialoguePage() {
+function CharacterDialoguePageContent() {
   const params = useParams()
   const router = useRouter()
   const sessionId = params.sessionId as string
@@ -20,16 +20,9 @@ export default function CharacterDialoguePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const { isAuthenticated } = useAuthStore()
   const { activeSessions, loadMessages } = useChatStore()
 
   useEffect(() => {
-    // Check authentication
-    if (!isAuthenticated) {
-      router.push('/auth/login')
-      return
-    }
-
     // Load session data
     const loadSession = async () => {
       try {
@@ -81,7 +74,7 @@ export default function CharacterDialoguePage() {
     }
 
     loadSession()
-  }, [sessionId, isAuthenticated, activeSessions, loadMessages, router])
+  }, [sessionId, activeSessions, loadMessages, router])
 
   // Handle session end
   const handleSessionEnd = () => {
@@ -148,5 +141,16 @@ export default function CharacterDialoguePage() {
       characterId={characterId}
       onSessionEnd={handleSessionEnd}
     />
+  )
+}
+
+export default function CharacterDialoguePage() {
+  const params = useParams()
+  const sessionId = params.sessionId as string
+
+  return (
+    <AuthGuard redirectTo={`/auth/login?redirect=/chat/character/${sessionId}`}>
+      <CharacterDialoguePageContent />
+    </AuthGuard>
   )
 }

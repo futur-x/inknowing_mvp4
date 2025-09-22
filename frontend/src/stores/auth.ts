@@ -1,9 +1,10 @@
 // Auth Store - InKnowing MVP 4.0
 // Business Logic Conservation: Manages authentication state transitions
-// Now uses cookie-based authentication instead of localStorage
+// Now uses Bearer Token authentication with localStorage
 
 import { create } from 'zustand'
 import { api } from '@/lib/api'
+import AuthStorage from '@/lib/auth-storage'
 import type { User, AuthResponse, LoginFormData, RegisterFormData } from '@/types/api'
 
 interface AuthState {
@@ -43,25 +44,29 @@ export const useAuthStore = create<AuthState>(
       isHydrated: false,
       error: null,
 
-      // Initialize auth event listeners
+      // Initialize auth from localStorage on startup
       ...((() => {
         if (typeof window !== 'undefined') {
-          // Listen for auth refresh failures from API client
-          window.addEventListener('auth:refresh-failed', () => {
-            get().clearAuth()
-          })
+          // Check if we have a stored token
+          const token = AuthStorage.getAccessToken()
+          if (token) {
+            // We have a token, mark as potentially authenticated
+            // Will validate on checkAuth() call
+            set({ token, isAuthenticated: !!token })
+          }
 
-          // Listen for auth tokens update from API client
-          window.addEventListener('auth:tokens-updated', ((event: CustomEvent) => {
-            const authData = event.detail as AuthResponse
-            if (authData.user) {
-              set({ user: authData.user })
+          // Listen for storage changes (multi-tab sync)
+          AuthStorage.addStorageListener((event) => {
+            if (event.newValue === null) {
+              // Token was cleared in another tab
+              get().clearAuth()
+            } else if (event.newValue) {
+              // Token was updated in another tab
+              const token = AuthStorage.getAccessToken()
+              set({ token, isAuthenticated: !!token })
+              // Trigger auth check to get user data
+              get().checkAuth()
             }
-          }) as EventListener)
-
-          // Listen for auth cleared event
-          window.addEventListener('auth:cleared', () => {
-            get().clearAuth()
           })
         }
         return {}
@@ -116,12 +121,18 @@ export const useAuthStore = create<AuthState>(
 
       // Refresh token action - Business Logic: Token renewal
       refreshAuth: async () => {
-        // Refresh token is now handled via cookies
+        const refreshToken = AuthStorage.getRefreshToken()
+
+        if (!refreshToken) {
+          get().clearAuth()
+          throw new Error('No refresh token available')
+        }
+
         try {
           set({ isLoading: true, error: null })
 
-          // The refresh endpoint will use the refresh_token cookie
-          const authData: AuthResponse = await api.auth.refresh({})
+          // Use refresh token to get new access token
+          const authData: AuthResponse = await api.auth.refresh({ refresh_token: refreshToken })
           get().setAuth(authData)
         } catch (error) {
           console.error('Token refresh failed:', error)
@@ -132,18 +143,27 @@ export const useAuthStore = create<AuthState>(
 
       // Check authentication status
       checkAuth: async () => {
-        // Check if we have a user profile
+        // Check if we have a valid token and get user profile
+        const token = AuthStorage.getAccessToken()
+
+        if (!token) {
+          get().clearAuth()
+          return
+        }
+
         try {
           set({ isLoading: true })
-          // Try to get user profile - cookies will be sent automatically
+          // Try to get user profile with Bearer token
           const user = await api.users.getProfile()
           set({
             user,
+            token,
             isAuthenticated: true,
             isLoading: false
           })
         } catch (error) {
           console.error('Auth check failed:', error)
+          // Token might be invalid
           get().clearAuth()
           set({ isLoading: false })
         }
@@ -173,17 +193,17 @@ export const useAuthStore = create<AuthState>(
 
       // Internal actions
       setAuth: (authData: AuthResponse) => {
-        // Tokens are now stored in httponly cookies
-        // We only store user info in state
-        // Store WebSocket token in sessionStorage for WebSocket connections
-        if (authData.ws_token && typeof window !== 'undefined') {
-          sessionStorage.setItem('ws_token', authData.ws_token)
-        }
+        // Store tokens in localStorage using AuthStorage
+        AuthStorage.setTokens({
+          access_token: authData.access_token,
+          refresh_token: authData.refresh_token,
+          ws_token: authData.ws_token,
+        })
 
         set({
           user: authData.user,
-          token: null, // Token is in cookie, not in state
-          refreshToken: null, // Refresh token is in cookie, not in state
+          token: authData.access_token,
+          refreshToken: authData.refresh_token,
           isAuthenticated: true,
           isLoading: false,
           error: null,
@@ -191,10 +211,8 @@ export const useAuthStore = create<AuthState>(
       },
 
       clearAuth: () => {
-        // Clear WebSocket token from sessionStorage
-        if (typeof window !== 'undefined') {
-          sessionStorage.removeItem('ws_token')
-        }
+        // Clear tokens from localStorage
+        AuthStorage.clearTokens()
 
         set({
           user: null,

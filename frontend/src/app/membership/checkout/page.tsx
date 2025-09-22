@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Shield, Lock, CreditCard } from 'lucide-react';
 import { useUserStore } from '@/stores/user';
@@ -310,12 +311,14 @@ function CheckoutContent() {
 
 export default function CheckoutPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-      </div>
-    }>
-      <CheckoutContent />
-    </Suspense>
+    <AuthGuard redirectTo="/auth/login?redirect=/membership/checkout">
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+        </div>
+      }>
+        <CheckoutContent />
+      </Suspense>
+    </AuthGuard>
   );
 }

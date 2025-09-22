@@ -59,9 +59,9 @@ export function useBooks(params?: BookQueryParams, config?: SWRConfiguration) {
   }, [params]);
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<BookListResponse>(
-    `/books${queryString ? `?${queryString}` : ''}`,
+    `books${queryString ? `?${queryString}` : ''}`,
     async () => {
-      const response = await apiClient.get(`/books${queryString ? `?${queryString}` : ''}`);
+      const response = await apiClient.get(`books${queryString ? `?${queryString}` : ''}`);
       return transformBookListResponse(response.data);
     },
     { ...defaultSWRConfig, ...config }
@@ -108,7 +108,7 @@ export function useBooksInfinite(params?: Omit<BookQueryParams, 'page'>, config?
 
     if (params?.search) searchParams.append('search', params.search);
 
-    return `/books?${searchParams.toString()}`;
+    return `books?${searchParams.toString()}`;
   };
 
   const { data, error, isLoading, isValidating, size, setSize, mutate } = useSWRInfinite<BookListResponse>(
@@ -117,22 +117,34 @@ export function useBooksInfinite(params?: Omit<BookQueryParams, 'page'>, config?
       const response = await apiClient.get(url);
       return transformBookListResponse(response.data);
     },
-    { ...defaultSWRConfig, ...config }
+    {
+      ...defaultSWRConfig,
+      ...config,
+      revalidateFirstPage: false,
+      revalidateAll: false
+    }
   );
 
   const books = useMemo(() => {
     if (!data) return [];
-    return data.flatMap(page => page.books);
+    return data.flatMap(page => page.books || []);
   }, [data]);
 
   const hasMore = useMemo(() => {
-    if (!data || data.length === 0) return true;
-    return data[data.length - 1]?.pagination?.has_next || false;
+    // Don't show "has more" until we have initial data
+    if (!data || data.length === 0) return false;
+    // Check if the last page has more data
+    const lastPage = data[data.length - 1];
+    return lastPage?.pagination?.has_next || false;
   }, [data]);
+
+  // Track if initial load is complete
+  const isInitialLoading = !data && isLoading;
 
   return {
     books,
-    isLoading,
+    isLoading: isInitialLoading,
+    isLoadingMore: isLoading && data && data.length > 0,
     isValidating,
     error,
     size,
@@ -152,9 +164,9 @@ export function usePopularBooks(
   config?: SWRConfiguration
 ) {
   const { data, error, isLoading, isValidating, mutate } = useSWR<{ books: Book[] }>(
-    `/books/popular?period=${period}&limit=${limit}`,
+    `books/popular?period=${period}&limit=${limit}`,
     async () => {
-      const response = await apiClient.get(`/books/popular?period=${period}&limit=${limit}`);
+      const response = await apiClient.get(`books/popular?period=${period}&limit=${limit}`);
       return {
         books: transformBooksData(response.data.books || [])
       };
@@ -180,7 +192,7 @@ export function useBook(bookId: string | null, config?: SWRConfiguration) {
     bookId ? `/books/${bookId}` : null,
     async () => {
       if (!bookId) return null;
-      const response = await apiClient.get(`/books/${bookId}`);
+      const response = await apiClient.get(`books/${bookId}`);
       return transformBookData(response.data);
     },
     { ...defaultSWRConfig, ...config }
@@ -207,10 +219,10 @@ export function useBookSearch(
   const debouncedQuery = useDebounce(query, debounceMs);
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<SearchResponse>(
-    debouncedQuery ? `/search?q=${encodeURIComponent(debouncedQuery)}&type=title` : null,
+    debouncedQuery ? `search?q=${encodeURIComponent(debouncedQuery)}&type=title` : null,
     async () => {
       if (!debouncedQuery) return null;
-      const response = await apiClient.get<SearchResponse>(`/search?q=${encodeURIComponent(debouncedQuery)}&type=title`);
+      const response = await apiClient.get<SearchResponse>(`search?q=${encodeURIComponent(debouncedQuery)}&type=title`);
       return response.data;
     },
     { ...defaultSWRConfig, ...config }
@@ -241,7 +253,7 @@ export function useGeneralSearch(
   const debouncedQuery = useDebounce(query, debounceMs);
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<SearchResponse>(
-    debouncedQuery ? `/search?q=${encodeURIComponent(debouncedQuery)}&type=${type}` : null,
+    debouncedQuery ? `search?q=${encodeURIComponent(debouncedQuery)}&type=${type}` : null,
     async () => {
       if (!debouncedQuery) return null;
 
@@ -254,7 +266,7 @@ export function useGeneralSearch(
       searchParams.append('q', processedQuery);
       if (type !== 'all') searchParams.append('type', type);
 
-      const response = await apiClient.get<SearchResponse>(`/search?${searchParams.toString()}`);
+      const response = await apiClient.get<SearchResponse>(`search?${searchParams.toString()}`);
       const data = response.data;
 
       // Process results to add client-side relevance scoring if needed
@@ -427,9 +439,9 @@ export function useIntelligentSearch(
   }, [debouncedQuery, type, filters, sortBy, page, limit]);
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<SearchResponse>(
-    searchParams ? `/search?${searchParams}` : null,
+    searchParams ? `search?${searchParams}` : null,
     () => searchParams
-      ? apiClient.get(`/search?${searchParams}`).then(res => res.data)
+      ? apiClient.get(`search?${searchParams}`).then(res => res.data)
       : null,
     { ...defaultSWRConfig, ...config }
   );
@@ -453,7 +465,7 @@ export function useIntelligentSearch(
 export function useBookRecommendations(limit: number = 5, config?: SWRConfiguration) {
   const { data, error, isLoading, isValidating, mutate } = useSWR<Book[]>(
     '/books/recommendations',
-    () => apiClient.get(`/books/recommendations?limit=${limit}`).then(res => res.data),
+    () => apiClient.get(`books/recommendations?limit=${limit}`).then(res => res.data),
     {
       ...defaultSWRConfig,
       ...config,
@@ -495,7 +507,7 @@ export function useRecentlyViewedBooks(limit: number = 5) {
   const { data: books, isLoading } = useSWR<Book[]>(
     bookIds.length > 0 ? `/books/batch?ids=${bookIds.join(',')}` : null,
     () => bookIds.length > 0
-      ? apiClient.get(`/books/batch?ids=${bookIds.join(',')}`).then(res => res.data)
+      ? apiClient.get(`books/batch?ids=${bookIds.join(',')}`).then(res => res.data)
       : [],
     {
       revalidateOnFocus: false,
@@ -522,7 +534,7 @@ export function useRecentlyViewedBooks(limit: number = 5) {
  * Improves perceived performance
  */
 export async function prefetchBook(bookId: string) {
-  const data = await apiClient.get(`/books/${bookId}`).then(res => res.data);
+  const data = await apiClient.get(`books/${bookId}`).then(res => res.data);
   mutate(`/books/${bookId}`, data, false);
   return data;
 }

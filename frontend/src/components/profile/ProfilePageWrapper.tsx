@@ -3,88 +3,69 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth'
+import AuthStorage from '@/lib/auth-storage'
 import ProfilePageClient from './ProfilePageClient'
 
 /**
- * ProfilePageWrapper - A wrapper component that handles authentication
- * without using AuthGuard to avoid redirect issues
+ * ProfilePageWrapper - Bearer Token Authentication
  *
  * This component:
- * 1. Waits for client-side hydration
- * 2. Checks authentication state from localStorage and store
- * 3. Only redirects if truly not authenticated
+ * 1. Checks for Bearer token in localStorage
+ * 2. Validates token with backend API
+ * 3. Redirects to login if no valid token
  * 4. Shows the profile page if authenticated
  */
 export default function ProfilePageWrapper() {
   const router = useRouter()
-  const { isAuthenticated, isHydrated, user, setAuth } = useAuthStore()
-  const [isChecking, setIsChecking] = useState(true)
-  const [shouldShowProfile, setShouldShowProfile] = useState(false)
+  const { isAuthenticated, checkAuth } = useAuthStore()
+  const [authChecking, setAuthChecking] = useState(true)
 
   useEffect(() => {
-    // Only run on client side
-    if (typeof window === 'undefined') {
-      return
-    }
+    const verifyAuth = async () => {
+      // Check for Bearer token in localStorage
+      const hasToken = AuthStorage.isAuthenticated()
 
-    // Check authentication
-    const checkAuthStatus = async () => {
-      console.log('[ProfileWrapper] Checking authentication...')
+      if (!hasToken) {
+        console.log('[ProfileWrapper] No token found, redirecting to login...')
+        router.push('/auth/login?redirect=/profile')
+        return
+      }
 
       try {
-        // Check authentication via API (cookies will be sent automatically)
-        const { checkAuth } = useAuthStore.getState()
+        // Validate token with backend
         await checkAuth()
 
-        // After checkAuth, the store should be updated
-        const { isAuthenticated: isAuth, user: currentUser } = useAuthStore.getState()
+        // Get updated auth state
+        const { isAuthenticated: isAuth, user } = useAuthStore.getState()
 
-        if (isAuth && currentUser) {
-          console.log('[ProfileWrapper] User authenticated')
-          setShouldShowProfile(true)
-        } else {
-          console.log('[ProfileWrapper] No valid auth found, redirecting...')
+        if (!isAuth || !user) {
+          console.log('[ProfileWrapper] Token invalid, redirecting to login...')
           router.push('/auth/login?redirect=/profile')
+        } else {
+          console.log('[ProfileWrapper] User authenticated:', user.username)
+          setAuthChecking(false)
         }
       } catch (error) {
         console.error('[ProfileWrapper] Auth check failed:', error)
         router.push('/auth/login?redirect=/profile')
-      } finally {
-        setIsChecking(false)
       }
     }
 
-    checkAuthStatus()
-  }, [router])
+    verifyAuth()
+  }, [checkAuth, router])
 
-  // Show loading while checking
-  if (isChecking) {
+  // Show loading while checking authentication
+  if (authChecking) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="h-8 w-8 mx-auto animate-spin rounded-full border-4 border-primary border-t-transparent" />
-            <p className="mt-4 text-muted-foreground">验证身份中...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">验证身份中...</p>
         </div>
       </div>
     )
   }
 
-  // Show profile if authenticated
-  if (shouldShowProfile) {
-    return <ProfilePageClient />
-  }
-
-  // Still checking or redirecting
-  return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="h-8 w-8 mx-auto animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="mt-4 text-muted-foreground">正在跳转...</p>
-        </div>
-      </div>
-    </div>
-  )
+  // Authentication successful, show profile
+  return <ProfilePageClient />
 }

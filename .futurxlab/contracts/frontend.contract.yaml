@@ -245,23 +245,31 @@ api:
 # 4. Authentication Configuration
 # ================================
 authentication:
+  type: "bearer_token"
   storage:
-    access_token:
-      type: "httpOnly cookie"
-      name: "access_token"
-      expires: "30 minutes"
-
-    refresh_token:
-      type: "httpOnly cookie"
-      name: "refresh_token"
-      expires: "7 days"
-
-    ws_token:
-      type: "sessionStorage"
-      name: "ws_token"
-      purpose: "WebSocket authentication"
+    type: "localStorage"
+    keys:
+      - "access_token"
+      - "refresh_token"
+      - "ws_token"
+      - "user_data"
+    tokens:
+      access_token:
+        type: "localStorage"
+        name: "access_token"
+        expires: "30 minutes"
+      refresh_token:
+        type: "localStorage"
+        name: "refresh_token"
+        expires: "7 days"
+      ws_token:
+        type: "localStorage"
+        name: "ws_token"
+        purpose: "WebSocket authentication"
 
   middleware:
+    development: "skip_all_checks"  # 开发环境跳过所有检查
+    production: "client_side_only"  # 生产环境客户端处理
     protected_routes:
       - "/profile"
       - "/dialogues"
@@ -278,6 +286,13 @@ authentication:
       - "/auth/verify"
       - "/login"
       - "/register"
+
+  api_config:
+    headers:
+      Authorization: "Bearer {access_token}"
+    error_handling:
+      401: "refresh_or_redirect_login"
+      403: "show_permission_error"
 
   redirect_behavior:
     after_login: "/"

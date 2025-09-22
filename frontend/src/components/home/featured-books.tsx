@@ -139,7 +139,7 @@ export function FeaturedBooks({ className }: FeaturedBooksProps) {
               }
             />
             <BookGrid
-              books={recommendations.books}
+              books={recommendations.recommendations}
               isLoading={recommendations.isLoading}
               columns={4}
               emptyMessage="暂无推荐书籍"

@@ -1,6 +1,7 @@
 // API Client - InKnowing MVP 4.0
-// Business Logic Conservation: Centralized API communication with authentication
+// Business Logic Conservation: Centralized API communication with Bearer Token authentication
 
+import AuthStorage from './auth-storage'
 import type { ApiResponse, ApiError, AuthResponse } from '@/types/api'
 
 export class ApiClient {
@@ -10,31 +11,34 @@ export class ApiClient {
   private refreshPromise: Promise<void> | null = null
 
   constructor() {
-    // Use direct backend URL for API calls
-    this.baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888/v1'
+    // Use direct backend URL for API calls - ensure trailing slash for proper URL construction
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888/v1'
+    this.baseURL = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
     this.timeout = 30000 // 30 seconds
     this.retries = 3
   }
 
-  // Get authentication token - needed for WebSocket
+  // Get authentication token - needed for WebSocket and API calls
   public getAuthToken(): string | null {
-    // For WebSocket connections, use the ws_token stored in sessionStorage
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('ws_token')
-    }
-    return null
+    // Get access token from localStorage
+    return AuthStorage.getAccessToken()
   }
 
-  // Get refresh token - no longer needed with cookies
+  // Get refresh token from localStorage
   private getRefreshToken(): string | null {
-    // Refresh token is stored in httponly cookie
-    return null
+    return AuthStorage.getRefreshToken()
   }
 
-  // Update tokens - no longer needed with cookies
+  // Update tokens in localStorage
   private updateTokens(authData: AuthResponse): void {
-    // Tokens are handled by httponly cookies
-    // We only need to update user info in the auth store
+    // Store new tokens in localStorage
+    AuthStorage.setTokens({
+      access_token: authData.access_token,
+      refresh_token: authData.refresh_token,
+      ws_token: authData.ws_token,
+    })
+
+    // Also notify components about the update
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('auth:tokens-updated', { detail: authData }))
     }
@@ -42,21 +46,28 @@ export class ApiClient {
 
   // Clear authentication data
   public clearAuth(): void {
-    // Cookies are cleared by the logout endpoint
+    // Clear tokens from localStorage
+    AuthStorage.clearTokens()
+
     // Notify components about auth clear
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('auth:cleared'))
     }
   }
 
-  // Create authenticated headers
+  // Create authenticated headers with Bearer Token
   private createHeaders(includeAuth = true): HeadersInit {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     }
 
-    // No need to manually add Authorization header
-    // Cookies will be sent automatically with credentials: 'include'
+    // Add Bearer Token if available and requested
+    if (includeAuth) {
+      const token = this.getAuthToken()
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+    }
 
     return headers
   }
@@ -204,12 +215,13 @@ export class ApiClient {
       const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout for refresh
 
       try {
-        const response = await fetch(`${this.baseURL}/auth/refresh`, {
+        // baseURL now always has trailing slash, so just append the endpoint
+        const response = await fetch(`${this.baseURL}auth/refresh`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          credentials: 'include', // Include cookies with refresh request
+          // No credentials needed, using Bearer Token in body
           body: JSON.stringify({ refresh_token: refreshToken }),
           signal: controller.signal,
         })
@@ -244,7 +256,9 @@ export class ApiClient {
     options: RequestInit = {},
     includeAuth = true
   ): Promise<T> {
-    const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`
+    // Remove leading slash from endpoint to avoid double slashes
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint
+    const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${cleanEndpoint}`
 
     return this.withRetry<T>(async () => {
       const controller = new AbortController()
@@ -257,7 +271,7 @@ export class ApiClient {
             ...this.createHeaders(includeAuth),
             ...options.headers,
           },
-          credentials: 'include', // Include cookies with requests
+          // No credentials needed with Bearer Token
           signal: controller.signal,
         })
       } finally {
@@ -314,7 +328,9 @@ export class ApiClient {
     formData: FormData,
     includeAuth = true
   ): Promise<T> {
-    const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`
+    // Remove leading slash from endpoint to avoid double slashes
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint
+    const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${cleanEndpoint}`
 
     return this.withRetry<T>(async () => {
       const controller = new AbortController()
@@ -346,28 +362,28 @@ export const apiClient = new ApiClient()
 export const api = {
   // Authentication - Business Logic: Anonymous → Authenticated State Transitions
   auth: {
-    login: (data: any) => apiClient.post('/auth/login', data, false),
-    register: (data: any) => apiClient.post('/auth/register', data, false),
-    logout: () => apiClient.post('/auth/logout'),
-    refresh: (data: any) => apiClient.post('/auth/refresh', data, false),
-    sendVerificationCode: (data: { phone: string }) => apiClient.post('/auth/verify-code', data, false),
+    login: (data: any) => apiClient.post('auth/login', data, false),
+    register: (data: any) => apiClient.post('auth/register', data, false),
+    logout: () => apiClient.post('auth/logout'),
+    refresh: (data: any) => apiClient.post('auth/refresh', data, false),
+    sendVerificationCode: (data: { phone: string }) => apiClient.post('auth/verify-code', data, false),
   },
 
   // Users - Business Logic: Profile and Membership Management
   users: {
-    getProfile: () => apiClient.get('/users/profile'),
-    updateProfile: (data: any) => apiClient.patch('/users/profile', data),
-    getMembership: () => apiClient.get('/users/membership'),
-    upgradeMembership: (data: any) => apiClient.post('/users/membership/upgrade', data),
-    getQuota: () => apiClient.get('/users/quota'),
+    getProfile: () => apiClient.get('users/profile'),
+    updateProfile: (data: any) => apiClient.patch('users/profile', data),
+    getMembership: () => apiClient.get('users/membership'),
+    upgradeMembership: (data: any) => apiClient.post('users/membership/upgrade', data),
+    getQuota: () => apiClient.get('users/quota'),
   },
 
   // Search - Business Logic: Question → Book Discovery
   search: {
     searchBooks: (query: string, type = 'question', page = 1, limit = 10) =>
-      apiClient.get(`/search?q=${encodeURIComponent(query)}&type=${type}&page=${page}&limit=${limit}`, false),
+      apiClient.get(`search?q=${encodeURIComponent(query)}&type=${type}&page=${page}&limit=${limit}`, false),
     searchByTitle: (title: string, exact = false) =>
-      apiClient.get(`/search/books?title=${encodeURIComponent(title)}&exact=${exact}`, false),
+      apiClient.get(`search/books?title=${encodeURIComponent(title)}&exact=${exact}`, false),
   },
 
   // Books - Business Logic: Book Catalog and Discovery
@@ -385,29 +401,29 @@ export const api = {
         }
       })
       const queryString = queryParams.toString()
-      return apiClient.get(`/books${queryString ? `?${queryString}` : ''}`, false)
+      return apiClient.get(`books${queryString ? `?${queryString}` : ''}`, false)
     },
     getPopular: (period: 'today' | 'week' | 'month' | 'all' = 'week', limit = 10) =>
-      apiClient.get(`/books/popular?period=${period}&limit=${limit}`, false),
-    getById: (id: string) => apiClient.get(`/books/${id}`, false),
-    getCharacters: (id: string) => apiClient.get(`/books/${id}/characters`, false),
+      apiClient.get(`books/popular?period=${period}&limit=${limit}`, false),
+    getById: (id: string) => apiClient.get(`books/${id}`, false),
+    getCharacters: (id: string) => apiClient.get(`books/${id}/characters`, false),
   },
 
   // Dialogues - Business Logic: User Action → AI Response Sequences
   dialogues: {
     startBook: (bookId: string, initialQuestion?: string) =>
-      apiClient.post('/dialogues/book/start', { book_id: bookId, initial_question: initialQuestion }),
+      apiClient.post('dialogues/book/start', { book_id: bookId, initial_question: initialQuestion }),
     startCharacter: (bookId: string, characterId: string, initialMessage?: string) =>
-      apiClient.post('/dialogues/character/start', {
+      apiClient.post('dialogues/character/start', {
         book_id: bookId,
         character_id: characterId,
         initial_message: initialMessage
       }),
     sendMessage: (sessionId: string, message: string) =>
-      apiClient.post(`/dialogues/${sessionId}/messages`, { message }),
+      apiClient.post(`dialogues/${sessionId}/messages`, { message }),
     getMessages: (sessionId: string, page = 1, limit = 20) =>
-      apiClient.get(`/dialogues/${sessionId}/messages?page=${page}&limit=${limit}`),
-    getContext: (sessionId: string) => apiClient.get(`/dialogues/${sessionId}/context`),
+      apiClient.get(`dialogues/${sessionId}/messages?page=${page}&limit=${limit}`),
+    getContext: (sessionId: string) => apiClient.get(`dialogues/${sessionId}/context`),
     getHistory: (params: {
       book_id?: string
       type?: 'book' | 'character'
@@ -421,16 +437,16 @@ export const api = {
         }
       })
       const queryString = queryParams.toString()
-      return apiClient.get(`/dialogues/history${queryString ? `?${queryString}` : ''}`)
+      return apiClient.get(`dialogues/history${queryString ? `?${queryString}` : ''}`)
     },
   },
 
   // Uploads - Business Logic: User Upload → AI Processing → Vectorization
   uploads: {
     check: (title: string, author: string) =>
-      apiClient.post('/uploads/check', { title, author }),
-    upload: (formData: FormData) => apiClient.upload('/uploads', formData),
-    getStatus: (id: string) => apiClient.get(`/uploads/${id}`),
+      apiClient.post('uploads/check', { title, author }),
+    upload: (formData: FormData) => apiClient.upload('uploads', formData),
+    getStatus: (id: string) => apiClient.get(`uploads/${id}`),
     getMy: (params: {
       status?: 'pending' | 'processing' | 'completed' | 'failed' | 'all'
       page?: number
@@ -443,13 +459,13 @@ export const api = {
         }
       })
       const queryString = queryParams.toString()
-      return apiClient.get(`/uploads/my${queryString ? `?${queryString}` : ''}`)
+      return apiClient.get(`uploads/my${queryString ? `?${queryString}` : ''}`)
     },
   },
 
   // Payment - Business Logic: Payment Processing Flow
   payment: {
-    getOrderStatus: (orderId: string) => apiClient.get(`/payment/orders/${orderId}`),
+    getOrderStatus: (orderId: string) => apiClient.get(`payment/orders/${orderId}`),
   },
 
   // WebSocket Connection Helper

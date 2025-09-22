@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useAuthStore } from '@/stores/auth';
 import {
   LayoutDashboard,
@@ -72,51 +73,31 @@ const adminNavItems = [
   }
 ];
 
-export default function AdminLayout({
+function AdminLayoutContent({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user } = useAuthStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check authentication and admin role
-    const checkAuth = async () => {
-      if (!isAuthenticated) {
-        router.push('/auth/login?redirect=/admin');
-        return;
-      }
-
-      // Check if user has admin role
-      if (user && user.role !== 'admin' && user.role !== 'moderator') {
-        router.push('/');
-        return;
-      }
-
-      setIsLoading(false);
-    };
-
-    checkAuth();
-  }, [isAuthenticated, user, router]);
+    // Check if user has admin role
+    if (user && user.role !== 'admin' && user.role !== 'moderator') {
+      router.push('/');
+    }
+  }, [user, router]);
 
   const handleLogout = () => {
     useAuthStore.getState().logout();
     router.push('/');
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-          <p className="text-muted-foreground">Verifying admin access...</p>
-        </div>
-      </div>
-    );
+  // Show nothing if not admin/moderator
+  if (user && user.role !== 'admin' && user.role !== 'moderator') {
+    return null;
   }
 
   if (!isAuthenticated || (user && user.role !== 'admin' && user.role !== 'moderator')) {
@@ -288,5 +269,17 @@ export default function AdminLayout({
         </main>
       </div>
     </div>
+  );
+}
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AuthGuard redirectTo="/auth/login?redirect=/admin">
+      <AdminLayoutContent>{children}</AdminLayoutContent>
+    </AuthGuard>
   );
 }

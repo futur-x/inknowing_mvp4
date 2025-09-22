@@ -5,12 +5,12 @@
 
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { AuthGuard } from '@/components/auth/AuthGuard'
 import { ChatContainer } from '@/components/chat/chat-container'
 import { Loader2 } from 'lucide-react'
 import { useChatStore } from '@/stores/chat'
-import { useAuthStore } from '@/stores/auth'
 
-export default function BookDialoguePage() {
+function BookDialoguePageContent() {
   const params = useParams()
   const router = useRouter()
   const sessionId = params.sessionId as string
@@ -19,7 +19,6 @@ export default function BookDialoguePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const { isAuthenticated } = useAuthStore()
   const activeSessions = useChatStore(state => state.activeSessions)
   const loadMessages = useChatStore(state => state.loadMessages)
   const connectWebSocket = useChatStore(state => state.connectWebSocket)
@@ -33,12 +32,6 @@ export default function BookDialoguePage() {
 
   // Effect for loading session data
   useEffect(() => {
-    // Check authentication
-    if (!isAuthenticated) {
-      router.push('/auth/login')
-      return
-    }
-
     // Skip if we already have the session with bookId
     if (hasSession && sessionBookId && bookId === sessionBookId) {
       setIsLoading(false)
@@ -69,7 +62,7 @@ export default function BookDialoguePage() {
     }
 
     loadSession()
-  }, [sessionId, isAuthenticated, hasSession, messageCount, loadMessages, router, bookId, sessionBookId])
+  }, [sessionId, hasSession, messageCount, loadMessages, bookId, sessionBookId])
 
   // Effect for updating bookId when session is loaded
   useEffect(() => {
@@ -142,5 +135,16 @@ export default function BookDialoguePage() {
       bookId={bookId}
       onSessionEnd={handleSessionEnd}
     />
+  )
+}
+
+export default function BookDialoguePage() {
+  const params = useParams()
+  const sessionId = params.sessionId as string
+
+  return (
+    <AuthGuard redirectTo={`/auth/login?redirect=/chat/book/${sessionId}`}>
+      <BookDialoguePageContent />
+    </AuthGuard>
   )
 }

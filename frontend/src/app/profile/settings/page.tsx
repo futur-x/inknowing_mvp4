@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,7 +34,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const router = useRouter()
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
@@ -424,5 +425,13 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <AuthGuard redirectTo="/auth/login?redirect=/profile/settings">
+      <SettingsPageContent />
+    </AuthGuard>
   )
 }

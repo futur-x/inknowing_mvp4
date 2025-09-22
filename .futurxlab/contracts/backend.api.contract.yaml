@@ -30,7 +30,19 @@ api_config:
       url: "https://api.inknowing.com"
 
 # ================================
-# 2. Authentication Endpoints
+# 2. Authentication Configuration
+# ================================
+authentication:
+  type: "bearer_token"
+  header: "Authorization"
+  format: "Bearer {token}"
+  endpoints:
+    all_protected_routes:
+      require: "valid_jwt_token"
+      response_401: "token_invalid_or_expired"
+
+# ================================
+# 3. Authentication Endpoints
 # ================================
 endpoints:
   auth:
@@ -48,8 +60,9 @@ endpoints:
           status: 201
           body:
             user: "User object"
-            access_token: "string (cookie)"
-            refresh_token: "string (cookie)"
+            access_token: "string (JWT)"
+            refresh_token: "string (JWT)"
+            ws_token: "string (JWT for WebSocket)"
         errors:
           400: "Invalid input data"
           409: "User already exists"
@@ -66,8 +79,9 @@ endpoints:
           status: 200
           body:
             user: "User object"
-            access_token: "string (cookie)"
-            refresh_token: "string (cookie)"
+            access_token: "string (JWT)"
+            refresh_token: "string (JWT)"
+            ws_token: "string (JWT for WebSocket)"
         errors:
           401: "Invalid credentials"
           404: "User not found"
@@ -86,13 +100,14 @@ endpoints:
       method: "POST"
       path: "/auth/refresh"
       request:
-        cookies:
-          refresh_token: "required"
+        body:
+          refresh_token: "string, required"
       response:
         success:
           status: 200
           body:
-            access_token: "string (cookie)"
+            access_token: "string (JWT)"
+            refresh_token: "string (JWT)"
         errors:
           401: "Invalid or expired refresh token"
 
@@ -113,7 +128,7 @@ endpoints:
           404: "Code not found or expired"
 
 # ================================
-# 3. User Endpoints
+# 4. User Endpoints
 # ================================
   users:
     profile:

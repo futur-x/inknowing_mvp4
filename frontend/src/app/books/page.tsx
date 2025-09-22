@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useBooksInfinite } from '@/hooks/use-books';
 import { BookGridInfinite } from '@/components/books/book-grid';
@@ -35,6 +35,7 @@ export default function BooksPage() {
   const {
     books,
     isLoading,
+    isLoadingMore,
     hasMore,
     setSize,
     size
@@ -57,21 +58,24 @@ export default function BooksPage() {
     window.history.replaceState({}, '', newUrl);
   }, [filters, sort, search]);
 
-  const handleLoadMore = () => {
-    setSize(size + 1);
-  };
+  // Use useCallback to ensure stable function reference
+  const handleLoadMore = useCallback(() => {
+    if (!isLoadingMore && hasMore) {
+      setSize(size + 1);
+    }
+  }, [size, setSize, isLoadingMore, hasMore]);
 
-  const handleSearch = (query: string) => {
+  const handleSearch = useCallback((query: string) => {
     setSearch(query);
     setFilters({});
     setSort(BookSortOption.POPULAR);
-  };
+  }, []);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setSearch('');
     setFilters({});
     setSort(BookSortOption.POPULAR);
-  };
+  }, []);
 
   // Calculate active filters description
   const getActiveFiltersDescription = () => {
@@ -175,7 +179,7 @@ export default function BooksPage() {
         {/* Books Grid with Infinite Scroll */}
         <BookGridInfinite
           books={books}
-          isLoading={isLoading}
+          isLoading={isLoadingMore || isLoading}
           hasMore={hasMore}
           onLoadMore={handleLoadMore}
           variant={viewMode}

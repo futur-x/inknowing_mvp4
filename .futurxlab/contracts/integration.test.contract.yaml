@@ -48,26 +48,30 @@ test_suites:
           - action: "Submit form"
           - assertion: "User created successfully"
           - assertion: "Redirected to home page"
-          - assertion: "Cookie 'access_token' is set"
+          - assertion: "Token returned in response body"
+          - assertion: "Token stored in localStorage"
 
       - id: "AUTH002"
-        name: "User Login Flow"
+        name: "Bearer Token Login Flow"
         steps:
           - action: "Navigate to /auth/login"
           - action: "Enter valid credentials"
           - action: "Submit login form"
           - assertion: "Login successful"
           - assertion: "User data loaded"
-          - assertion: "Cookie 'access_token' is set"
-          - assertion: "Cookie 'refresh_token' is set"
+          - assertion: "Access token stored in localStorage"
+          - assertion: "Refresh token stored in localStorage"
+          - assertion: "WS token stored in localStorage"
 
       - id: "AUTH003"
-        name: "Token Refresh Flow"
+        name: "Bearer Token Refresh Flow"
         steps:
           - action: "Login with valid credentials"
-          - action: "Wait for access token to expire"
-          - action: "Make API request"
-          - assertion: "Token automatically refreshed"
+          - action: "Make API request with expired token"
+          - assertion: "Receive 401 Unauthorized"
+          - action: "Use refresh token to get new access token"
+          - assertion: "New access token received"
+          - assertion: "Retry original request with new token"
           - assertion: "Request completed successfully"
 
       - id: "AUTH004"
@@ -75,17 +79,41 @@ test_suites:
         steps:
           - action: "Login as user"
           - action: "Click logout button"
-          - assertion: "Cookies cleared"
+          - assertion: "Tokens cleared from localStorage"
           - assertion: "Redirected to login page"
+          - assertion: "API requests without token return 401"
           - assertion: "Protected routes inaccessible"
 
       - id: "AUTH005"
-        name: "Protected Route Access"
+        name: "Protected Route Access with Bearer Token"
         steps:
           - action: "Navigate to /profile without auth"
           - assertion: "Redirected to /auth/login"
           - action: "Login"
+          - assertion: "Tokens stored in localStorage"
           - assertion: "Redirected back to /profile"
+          - assertion: "API requests include Authorization header"
+
+      - id: "AUTH006"
+        name: "Multi-Tab Synchronization"
+        steps:
+          - action: "Login in tab 1"
+          - assertion: "Tokens stored in localStorage"
+          - action: "Open new tab (tab 2)"
+          - assertion: "Tab 2 reads tokens from localStorage"
+          - assertion: "Tab 2 authenticated automatically"
+          - action: "Logout from tab 1"
+          - assertion: "Tab 2 detects storage event"
+          - assertion: "Tab 2 redirects to login"
+
+      - id: "AUTH007"
+        name: "API Request with Bearer Token"
+        steps:
+          - action: "Login and store tokens"
+          - action: "Make GET request to /v1/users/profile"
+          - assertion: "Request includes 'Authorization: Bearer {token}' header"
+          - assertion: "Response status 200"
+          - assertion: "User profile data returned"
 
 # ================================
 # 3. Dialogue Flow Tests

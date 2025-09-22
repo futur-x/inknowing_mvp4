@@ -150,9 +150,25 @@ communication:
 # ================================
 security:
   authentication:
-    method: "JWT + Cookie"
-    token_storage: "httpOnly secure cookie"
-    refresh_mechanism: "Automatic with refresh token"
+    type: "bearer_token"
+    method: "JWT Bearer Token"
+    mechanism:
+      - "JWT Bearer Token in Authorization header"
+      - "Token stored in localStorage"
+      - "Multi-tab synchronization via storage events"
+    flow:
+      login:
+        - "User submits credentials to /v1/auth/login"
+        - "Backend returns JWT tokens (access, refresh, ws)"
+        - "Frontend stores tokens in localStorage"
+        - "All API requests include Bearer token in header"
+      logout:
+        - "Clear tokens from localStorage"
+        - "Redirect to login page"
+      refresh:
+        - "Detect 401 Unauthorized"
+        - "Use refresh token to get new access token"
+        - "Retry original request with new token"
 
   authorization:
     model: "Role-Based Access Control (RBAC)"

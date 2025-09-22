@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 import { useAuth } from '@/contexts/auth-context';
 import { Upload, BookOpen, AlertCircle, Crown, Info, CheckCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,7 +28,7 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888/v1';
 
-export default function UploadPage() {
+function UploadPageContent() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
   const [currentStep, setCurrentStep] = useState<'check' | 'metadata' | 'upload' | 'processing'>('check');
@@ -451,5 +452,13 @@ export default function UploadPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function UploadPage() {
+  return (
+    <AuthGuard redirectTo="/auth/login?redirect=/upload">
+      <UploadPageContent />
+    </AuthGuard>
   );
 }
