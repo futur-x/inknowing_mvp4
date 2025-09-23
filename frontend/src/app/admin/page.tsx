@@ -24,6 +24,7 @@ import {
   Activity
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<PlatformStats | null>(null);

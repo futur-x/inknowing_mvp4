@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { AuthGuard } from '@/components/auth/AuthGuard';
@@ -325,8 +325,15 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+
+  // If it's the login page, don't wrap with AuthGuard
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
   return (
-    <AuthGuard redirectTo="/auth/login?redirect=/admin">
+    <AuthGuard redirectTo="/admin/login">
       <AdminLayoutContent>{children}</AdminLayoutContent>
     </AuthGuard>
   );

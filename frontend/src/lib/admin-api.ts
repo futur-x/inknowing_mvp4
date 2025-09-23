@@ -480,7 +480,7 @@ class AdminAPI {
 
   // WebSocket for real-time monitoring
   connectMonitoring(onUpdate: (data: any) => void): WebSocket {
-    const ws = new WebSocket(`${process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8888'}/admin/monitor`);
+    const ws = new WebSocket(`${process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8888'}/admin/monitor`);
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
