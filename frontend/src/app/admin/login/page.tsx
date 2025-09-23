@@ -31,6 +31,7 @@ export default function AdminLoginPage() {
     try {
       // Login with phone and password
       const response = await apiClient.post('/auth/login', {
+        type: 'phone',  // Required field for backend schema validation
         phone: formData.phone,
         password: formData.password
       });
