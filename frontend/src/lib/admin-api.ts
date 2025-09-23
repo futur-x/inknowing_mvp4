@@ -480,7 +480,13 @@ class AdminAPI {
 
   // WebSocket for real-time monitoring
   connectMonitoring(onUpdate: (data: any) => void): WebSocket {
-    const wsUrl = `${process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8888'}/admin/monitor`;
+    // Get admin token from apiClient
+    const token = apiClient.getAuthToken();
+    if (!token) {
+      throw new Error('No authentication token available');
+    }
+
+    const wsUrl = `${process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8888'}/ws/admin/monitor?token=${encodeURIComponent(token)}`;
 
     try {
       const ws = new WebSocket(wsUrl);

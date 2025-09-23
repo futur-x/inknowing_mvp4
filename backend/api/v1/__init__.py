@@ -17,6 +17,7 @@ from .ai_model import router as ai_model_router
 from .admin_dialogue import router as admin_dialogue_router
 from .analytics import router as analytics_router
 from .monitoring import router as monitoring_router
+from .admin_websocket import router as admin_websocket_router
 
 # Create main API router
 api_router = APIRouter()
@@ -36,5 +37,6 @@ api_router.include_router(ai_model_router)  # Already has prefix="/admin/models"
 api_router.include_router(admin_dialogue_router)  # Already has prefix="/admin/dialogues"
 api_router.include_router(analytics_router)  # Already has prefix="/admin/analytics"
 api_router.include_router(monitoring_router)  # Already has prefix="/admin/monitoring"
+api_router.include_router(admin_websocket_router)  # WebSocket endpoints
 
 __all__ = ["api_router"]

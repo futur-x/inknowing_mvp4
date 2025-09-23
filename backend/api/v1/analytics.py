@@ -855,6 +855,100 @@ async def export_analytics_data(
         logger.error(f"Error exporting analytics data: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to export analytics data")
 
+# General analytics endpoint (for GrowthChart component)
+@router.get("")
+async def get_general_analytics(
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    metrics: Optional[List[str]] = Query(None),
+    admin: Admin = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get general analytics data for the dashboard
+    Returns data in the format expected by the frontend GrowthChart component
+    """
+    try:
+        # Parse date strings if provided
+        if start_date:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+        else:
+            start_dt = datetime.utcnow() - timedelta(days=30)
+
+        if end_date:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        else:
+            end_dt = datetime.utcnow()
+
+        # Initialize response structure
+        response = {}
+
+        # If specific metrics requested, only return those
+        if metrics:
+            metric_list = metrics
+        else:
+            # Default to all metrics
+            metric_list = ['users', 'revenue', 'usage']
+
+        # User growth data
+        if 'users' in metric_list:
+            user_growth = []
+            current = start_dt
+            while current <= end_dt:
+                next_date = current + timedelta(days=1)
+                count = db.query(func.count(User.id)).filter(
+                    User.created_at < next_date
+                ).scalar()
+                user_growth.append({
+                    "date": current.strftime("%Y-%m-%d"),
+                    "users": count
+                })
+                current = next_date
+            response["userGrowth"] = user_growth
+
+        # Revenue growth data
+        if 'revenue' in metric_list:
+            revenue_growth = []
+            current = start_dt
+            while current <= end_dt:
+                next_date = current + timedelta(days=1)
+                daily_revenue = db.query(func.sum(Payment.amount)).filter(
+                    and_(
+                        Payment.created_at >= current,
+                        Payment.created_at < next_date,
+                        Payment.status == "completed"
+                    )
+                ).scalar() or 0
+                revenue_growth.append({
+                    "date": current.strftime("%Y-%m-%d"),
+                    "revenue": float(daily_revenue)
+                })
+                current = next_date
+            response["revenueGrowth"] = revenue_growth
+
+        # Usage pattern data (hourly dialogue count)
+        if 'usage' in metric_list:
+            usage_pattern = []
+            for hour in range(24):
+                hour_count = db.query(func.count(DialogueSession.id)).filter(
+                    and_(
+                        DialogueSession.created_at >= start_dt,
+                        DialogueSession.created_at <= end_dt,
+                        extract('hour', DialogueSession.created_at) == hour
+                    )
+                ).scalar()
+                usage_pattern.append({
+                    "hour": hour,
+                    "dialogues": hour_count
+                })
+            response["usagePattern"] = usage_pattern
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Error fetching general analytics: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch analytics data")
+
 # Health check endpoint for analytics service
 @router.get("/health")
 async def analytics_health_check():
