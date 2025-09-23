@@ -20,7 +20,7 @@ from backend.schemas.book import (
 router = APIRouter(tags=["Books"])
 
 
-@router.get("/books", response_model=BookList)
+@router.get("", response_model=BookList)
 async def list_books(
     category: Optional[CategoryEnum] = None,
     sort: Optional[str] = Query(default="popular"),  # Changed to accept string for now
@@ -44,14 +44,15 @@ async def list_books(
         category=category.value if category else None,
         sort=sort,
         page=page,
-        limit=limit
+        limit=limit,
+        min_rating=minRating
     )
 
     # Return the actual database results
     return result
 
 
-@router.get("/books/popular")
+@router.get("/popular")
 async def get_popular_books(
     period: Optional[str] = Query(default="week"),  # Changed to accept string
     limit: int = Query(default=10, ge=1, le=50),
@@ -63,73 +64,29 @@ async def get_popular_books(
     - **period**: Time period for popularity (today, week, month, all)
     - **limit**: Number of books to return (max 50)
     """
-    # Return mock data for testing CORS
-    mock_books = []
-    for i in range(min(limit, 8)):
-        mock_books.append({
-            "id": f"popular-{i+1}",
-            "title": f"Popular Book {i+1}",
-            "author": f"Famous Author {i+1}",
-            "cover": f"/mock-popular-{i+1}.jpg",
-            "category": "business",
-            "description": f"This is a popular book for {period}",
-            "dialogue_count": 1000 + i * 100,
-            "rating": 4.8 - (i * 0.05),
-            "created_at": "2024-01-01T00:00:00Z"
-        })
+    # Use real BookService to get popular books from database
+    book_service = BookService(db)
+    result = await book_service.get_popular_books(
+        period=period,
+        limit=limit
+    )
 
+    # Convert to expected format with pagination
     return {
-        "books": mock_books,
+        "books": result["books"],
         "pagination": {
             "page": 1,
             "limit": limit,
-            "total": 100,
-            "total_pages": 10,
-            "has_next": True,
+            "total": result["count"],
+            "total_pages": 1,  # Popular books are not paginated
+            "has_next": False,
             "has_prev": False
         }
     }
 
 
-@router.get("/books/recent")
-async def get_recent_books(
-    limit: int = Query(default=10, ge=1, le=50),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Get list of recently added books
 
-    - **limit**: Number of books to return (max 50)
-    """
-    # Return mock data for testing CORS
-    mock_books = []
-    for i in range(min(limit, 8)):
-        mock_books.append({
-            "id": f"recent-{i+1}",
-            "title": f"Recent Book {i+1}",
-            "author": f"New Author {i+1}",
-            "cover": f"/mock-recent-{i+1}.jpg",
-            "category": "business",
-            "description": f"This is a recently added book",
-            "dialogue_count": 50 + i * 10,
-            "rating": 4.2 - (i * 0.05),
-            "created_at": f"2024-01-{15-i:02d}T00:00:00Z"
-        })
-
-    return {
-        "books": mock_books,
-        "pagination": {
-            "page": 1,
-            "limit": limit,
-            "total": 50,
-            "total_pages": 5,
-            "has_next": True,
-            "has_prev": False
-        }
-    }
-
-
-@router.get("/books/recommendations")
+@router.get("/recommendations")
 async def get_book_recommendations(
     limit: int = Query(default=10, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
@@ -139,35 +96,28 @@ async def get_book_recommendations(
 
     - **limit**: Number of recommendations to return (max 50)
     """
-    # Return mock data for testing CORS
-    mock_books = []
-    for i in range(min(limit, 8)):
-        mock_books.append({
-            "id": f"recommend-{i+1}",
-            "title": f"Recommended Book {i+1}",
-            "author": f"Recommended Author {i+1}",
-            "cover": f"/mock-recommend-{i+1}.jpg",
-            "category": "business",
-            "description": f"This book is recommended for you",
-            "dialogue_count": 500 + i * 50,
-            "rating": 4.6 - (i * 0.05),
-            "created_at": "2024-01-01T00:00:00Z"
-        })
+    # Use real BookService to get recommendations from database
+    book_service = BookService(db)
+    result = await book_service.get_book_recommendations(
+        limit=limit,
+        user_id=None  # TODO: Get user_id from auth context when authentication is added
+    )
 
+    # Convert to expected format with pagination
     return {
-        "books": mock_books,
+        "books": result["books"],
         "pagination": {
             "page": 1,
             "limit": limit,
-            "total": 50,
-            "total_pages": 5,
-            "has_next": True,
+            "total": result["count"],
+            "total_pages": 1,  # Recommendations are not paginated
+            "has_next": False,
             "has_prev": False
         }
     }
 
 
-@router.get("/books/{book_id}", response_model=BookDetail)
+@router.get("/{book_id}", response_model=BookDetail)
 async def get_book_detail(
     book_id: str = Path(..., description="Book ID"),
     db: AsyncSession = Depends(get_db),
@@ -189,7 +139,7 @@ async def get_book_detail(
     return BookDetail(**result)
 
 
-@router.get("/books/{book_id}/characters")
+@router.get("/{book_id}/characters")
 async def get_book_characters(
     book_id: str = Path(..., description="Book ID"),
     db: AsyncSession = Depends(get_db),
@@ -230,7 +180,7 @@ async def get_book_characters(
     }
 
 
-@router.get("/books/{book_id}/related")
+@router.get("/{book_id}/related")
 async def get_related_books(
     book_id: str = Path(..., description="Book ID"),
     limit: int = Query(default=5, ge=1, le=20),

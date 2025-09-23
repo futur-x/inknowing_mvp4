@@ -25,6 +25,7 @@ class BookService:
         sort: str = "popular",
         page: int = 1,
         limit: int = 20,
+        min_rating: Optional[float] = None,
     ) -> Dict[str, Any]:
         """Get paginated list of available books"""
         # Base query - only published books (use string literal for enum)
@@ -34,13 +35,19 @@ class BookService:
         if category:
             query = query.where(Book.category == category)
 
+        # Apply minimum rating filter
+        if min_rating is not None:
+            query = query.where(Book.rating >= min_rating)
+
         # Apply sorting
         if sort == "popular":
             query = query.order_by(desc(Book.dialogue_count))
-        elif sort == "newest":
+        elif sort == "newest" or sort == "recent":
             query = query.order_by(desc(Book.created_at))
         elif sort == "most_discussed":
             query = query.order_by(desc(Book.dialogue_count))
+        elif sort == "rating":
+            query = query.order_by(desc(Book.rating), desc(Book.dialogue_count))
         else:
             query = query.order_by(desc(Book.dialogue_count))
 
@@ -179,6 +186,34 @@ class BookService:
 
         return {
             "period": period,
+            "books": [self._format_book(book) for book in books],
+            "count": len(books),
+        }
+
+    async def get_book_recommendations(
+        self, limit: int = 10, user_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get book recommendations based on rating and popularity"""
+        # For now, return highly rated popular books as recommendations
+        # In the future, this could use user history for personalized recommendations
+
+        # Query for highly rated books with good engagement
+        query = (
+            select(Book)
+            .where(Book.status == "published")
+            .where(Book.rating >= 4.0)  # Only highly rated books
+            .order_by(
+                desc(Book.rating),  # Priority to rating
+                desc(Book.dialogue_count)  # Then by popularity
+            )
+            .limit(limit)
+        )
+
+        # Execute query
+        result = await self.db.execute(query)
+        books = result.scalars().all()
+
+        return {
             "books": [self._format_book(book) for book in books],
             "count": len(books),
         }
