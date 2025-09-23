@@ -40,7 +40,7 @@ class AdminService:
 
             # Real-time stats
             stmt = select(func.count(User.id)).where(
-                User.last_active > now - timedelta(minutes=5)
+                User.last_login_at > now - timedelta(minutes=5)
             )
             result = await self.db.execute(stmt)
             online_users = result.scalar() or 0
@@ -185,7 +185,7 @@ class AdminService:
                     )
                 )
             if membership:
-                conditions.append(User.membership_type == membership)
+                conditions.append(User.membership == membership)
             if status and status != "all":
                 if status == "active":
                     conditions.append(User.status == UserStatus.ACTIVE)
@@ -214,8 +214,8 @@ class AdminService:
             order_field = None
             if sort_by == "created_at":
                 order_field = User.created_at
-            elif sort_by == "last_active" and hasattr(User, 'last_active'):
-                order_field = User.last_active
+            elif sort_by == "last_active":
+                order_field = User.last_login_at
             elif sort_by == "username":
                 order_field = User.username
             # Add dialogue_count sorting later with subquery
@@ -255,7 +255,7 @@ class AdminService:
                 user_dict.update({
                     "total_dialogues": dialogue_count,
                     "total_uploads": upload_count,
-                    "last_active": user.last_active.isoformat() if hasattr(user, 'last_active') and user.last_active else None
+                    "last_active": user.last_login_at.isoformat() if user.last_login_at else None
                 })
                 user_list.append(user_dict)
 
@@ -317,7 +317,7 @@ class AdminService:
                 "total_dialogues": dialogue_count,
                 "total_uploads": upload_count,
                 "quota_used": user.quota_used if hasattr(user, 'quota_used') else 0,
-                "quota_limit": self._get_quota_limit(user.membership_type)
+                "quota_limit": self._get_quota_limit(user.membership)
             })
 
             return user_dict
@@ -374,9 +374,9 @@ class AdminService:
                 new_values["status"] = status
 
             # Update membership
-            if membership and membership != user.membership_type:
-                old_values["membership"] = user.membership_type
-                user.membership_type = membership
+            if membership and membership != user.membership:
+                old_values["membership"] = user.membership
+                user.membership = membership
                 new_values["membership"] = membership
 
             # Update quota override
@@ -695,16 +695,16 @@ class AdminService:
 
             # Users by membership
             stmt = select(
-                User.membership_type,
+                User.membership,
                 func.count(User.id)
-            ).group_by(User.membership_type)
+            ).group_by(User.membership)
             result = await self.db.execute(stmt)
             membership_stats = {row[0]: row[1] for row in result}
 
             # Active users (last 30 days)
             active_since = datetime.utcnow() - timedelta(days=30)
             stmt = select(func.count(User.id)).where(
-                User.last_active >= active_since
+                User.last_login_at >= active_since
             )
             result = await self.db.execute(stmt)
             active_users = result.scalar() or 0
@@ -728,7 +728,7 @@ class AdminService:
             total_books = result.scalar() or 0
 
             # Active books
-            stmt = select(func.count(Book.id)).where(Book.status == BookStatus.ACTIVE)
+            stmt = select(func.count(Book.id)).where(Book.status == "published")
             result = await self.db.execute(stmt)
             active_books = result.scalar() or 0
 
@@ -1283,7 +1283,7 @@ class AdminService:
             if format == "csv":
                 output = io.StringIO()
                 writer = csv.DictWriter(output, fieldnames=[
-                    "id", "username", "phone", "email", "membership_type",
+                    "id", "username", "phone", "email", "membership",
                     "status", "created_at", "last_active", "total_dialogues"
                 ])
                 writer.writeheader()

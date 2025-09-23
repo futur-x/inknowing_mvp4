@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from loguru import logger
 
-from config import settings
+from backend.config import settings
 from backend.core.security import (
     create_access_token,
     create_refresh_token,

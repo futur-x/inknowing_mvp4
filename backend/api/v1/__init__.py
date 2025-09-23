@@ -12,6 +12,7 @@ from .dialogue import router as dialogue_router
 from .upload import router as upload_router
 from .payment import router as payment_router
 from .admin import router as admin_router
+# from .admin_stats import router as admin_stats_router  # Commented out - conflicts with admin.py /stats endpoint
 from .ai_model import router as ai_model_router
 from .admin_dialogue import router as admin_dialogue_router
 from .analytics import router as analytics_router
@@ -30,6 +31,7 @@ api_router.include_router(dialogue_router)  # Already has prefix="/dialogues"
 api_router.include_router(upload_router)  # Already has prefix="/uploads"
 api_router.include_router(payment_router)  # Already has prefix="/payment"
 api_router.include_router(admin_router)  # Already has prefix="/admin"
+# api_router.include_router(admin_stats_router, prefix="/admin")  # Commented out - conflicts with admin.py /stats endpoint
 api_router.include_router(ai_model_router)  # Already has prefix="/admin/models"
 api_router.include_router(admin_dialogue_router)  # Already has prefix="/admin/dialogues"
 api_router.include_router(analytics_router)  # Already has prefix="/admin/analytics"

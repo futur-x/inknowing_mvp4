@@ -2,7 +2,7 @@
 Admin API endpoints
 """
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -11,10 +11,11 @@ from sqlmodel import select, func, desc
 
 from backend.config.database import get_db
 from backend.models.admin import Admin, AdminRole
-from backend.models.user import User
+from backend.models.user import User, MembershipType
 from backend.models.book import Book
 from backend.models.dialogue import DialogueSession
 from backend.services.admin_auth import AdminAuthService
+from backend.services.auth import AuthService
 from backend.services.admin import AdminService
 from backend.services.monitoring import MonitoringService
 from backend.services.book_admin import BookAdminService
@@ -76,28 +77,56 @@ security = HTTPBearer()
 async def get_current_admin(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db)
-) -> Admin:
-    """Get current admin from token"""
+):
+    """Get current admin from token - supports both admin and super membership users"""
     token = credentials.credentials
-    auth_service = AdminAuthService(db)
-    admin = await auth_service.get_current_admin(token)
 
-    if not admin:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    # First try admin authentication
+    admin_auth_service = AdminAuthService(db)
+    try:
+        admin = await admin_auth_service.get_current_admin(token)
+        if admin:
+            return admin
+    except:
+        pass
 
-    return admin
+    # If not admin, try regular user with super membership
+    from backend.core.security import verify_token
+    try:
+        # Verify the user token
+        payload = verify_token(token, token_type="access")
+        if payload:
+            user_id = payload.get("sub")
+            if user_id:
+                # Get user from database
+                result = await db.execute(
+                    select(User).where(User.id == user_id, User.deleted_at.is_(None))
+                )
+                user = result.scalar_one_or_none()
+
+                if user and user.membership == MembershipType.SUPER:
+                    # Return user as admin-like object
+                    return user
+    except:
+        pass
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 def require_permission(permission: str):
     """Dependency to check admin permission"""
     async def check_permission(
-        admin: Admin = Depends(get_current_admin)
-    ) -> Admin:
-        if not admin.has_permission(permission):
+        admin = Depends(get_current_admin)
+    ):
+        # If it's a User with super membership, allow all permissions
+        if hasattr(admin, 'membership') and admin.membership == MembershipType.SUPER:
+            return admin
+        # If it's an Admin, check permissions normally
+        if hasattr(admin, 'has_permission') and not admin.has_permission(permission):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Permission denied: {permission}"
@@ -109,9 +138,13 @@ def require_permission(permission: str):
 def require_super_admin():
     """Dependency to require super admin role"""
     async def check_super_admin(
-        admin: Admin = Depends(get_current_admin)
-    ) -> Admin:
-        if admin.role != AdminRole.SUPER_ADMIN:
+        admin = Depends(get_current_admin)
+    ):
+        # If it's a User with super membership, allow access
+        if hasattr(admin, 'membership') and admin.membership == MembershipType.SUPER:
+            return admin
+        # If it's an Admin, check role
+        if hasattr(admin, 'role') and admin.role != AdminRole.SUPER_ADMIN:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Super admin access required"
@@ -185,7 +218,7 @@ async def refresh_token(
 async def admin_logout(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    admin: Admin = Depends(get_current_admin),
+    admin = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """Admin logout"""
@@ -209,7 +242,7 @@ async def admin_logout(
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
 async def change_password(
     password_data: AdminPasswordChange,
-    admin: Admin = Depends(get_current_admin),
+    admin = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """Change admin password"""
@@ -233,7 +266,7 @@ async def change_password(
 # ==================== Dashboard Endpoints ====================
 @router.get("/dashboard", response_model=EnhancedDashboardStats)
 async def get_dashboard(
-    admin: Admin = Depends(get_current_admin),
+    admin = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """Get enhanced dashboard statistics"""
@@ -253,7 +286,7 @@ async def get_dashboard(
 
 @router.get("/stats", response_model=Dict[str, Any])
 async def get_admin_stats(
-    admin: Admin = Depends(get_current_admin),
+    admin = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """Get comprehensive admin statistics for dashboard"""
@@ -283,10 +316,10 @@ async def get_admin_stats(
     result = await db.execute(stmt)
     dialogues_today = result.scalar() or 0
 
-    # Get active users (last 24h)
+    # Get active users (using created_at as a proxy for now)
     active_since = datetime.utcnow() - timedelta(hours=24)
     stmt = select(func.count(User.id)).where(
-        User.last_active >= active_since
+        User.created_at >= active_since
     )
     result = await db.execute(stmt)
     active_users = result.scalar() or 0
@@ -307,7 +340,7 @@ async def get_admin_stats(
 @router.get("/trends", response_model=Dict[str, Any])
 async def get_trends_data(
     period: int = 7,  # days
-    admin: Admin = Depends(get_current_admin),
+    admin = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """Get trend data for charts"""
@@ -340,7 +373,7 @@ async def get_trends_data(
 @router.get("/recent-activities", response_model=Dict[str, Any])
 async def get_recent_activities(
     limit: int = 10,
-    admin: Admin = Depends(get_current_admin),
+    admin = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """Get recent system activities"""
@@ -400,7 +433,7 @@ async def get_recent_activities(
                 "id": str(u.id),
                 "username": u.username,
                 "created_at": u.created_at.isoformat(),
-                "membership": u.membership_type
+                "membership": u.membership
             }
             for u in recent_users
         ],
@@ -442,7 +475,7 @@ async def get_system_alerts(
     severity: Optional[str] = None,
     status: str = "active",
     limit: int = 50,
-    admin: Admin = Depends(get_current_admin),
+    admin = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """Get system alerts"""
@@ -1052,7 +1085,7 @@ async def update_alert(
 
 @router.get("/monitoring/health", response_model=SystemHealthResponse)
 async def get_system_health(
-    admin: Admin = Depends(get_current_admin),
+    admin = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """Get system health status"""
