@@ -8,7 +8,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
-from config.database import engine, init_db
+from backend.config.database import engine, init_db
 
 
 async def create_test_books():

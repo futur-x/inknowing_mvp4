@@ -10,8 +10,8 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, and_, or_, func
 
-from models.user import User, UserProfile, UserQuota, MembershipType, UserStatus
-from core.exceptions import (
+from backend.models.user import User, UserProfile, UserQuota, MembershipType, UserStatus
+from backend.core.exceptions import (
     NotFoundException,
     BadRequestException,
     ForbiddenException,

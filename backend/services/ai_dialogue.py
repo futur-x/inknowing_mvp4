@@ -8,10 +8,10 @@ import json
 import os
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.dialogue import DialogueSession, DialogueMessage, DialogueType
-from models.book import Book, BookCharacter, BookType
-from config.settings import settings
-from services.litellm_service import get_litellm_service
+from backend.models.dialogue import DialogueSession, DialogueMessage, DialogueType
+from backend.models.book import Book, BookCharacter, BookType
+from backend.config.settings import settings
+from backend.services.litellm_service import get_litellm_service
 
 
 class AIDialogueService:

@@ -15,21 +15,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func
 from sqlalchemy.orm import selectinload
 
-from models.upload import (
+from backend.models.upload import (
     Upload, UploadStatus, FileType,
     ProcessingStep, StepStatus
 )
-from models.book import Book, BookType, BookStatus
-from models.user import User
-from schemas.upload import (
+from backend.models.book import Book, BookType, BookStatus
+from backend.models.user import User
+from backend.schemas.upload import (
     UploadCreate, UploadUpdate, UploadFilters,
     BookCheckRequest, BookCheckResponse,
     FileUploadMetadata
 )
-from config.storage import storage_config
-from utils.file_validation import FileValidator
-from services.ai_dialogue import AIDialogueService
-from core.logger import get_logger
+from backend.config.storage import storage_config
+from backend.utils.file_validation import FileValidator
+from backend.services.ai_dialogue import AIDialogueService
+from backend.core.logger import get_logger
 
 logger = get_logger(__name__)
 

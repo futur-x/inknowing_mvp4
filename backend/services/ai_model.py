@@ -16,24 +16,24 @@ from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
-from models.admin import AIModelConfig
-from models.dialogue import (
+from backend.models.admin import AIModelConfig
+from backend.models.dialogue import (
     DialogueSession,
     DialogueMessage,
     AIUsageTracking,
     PromptTemplate,
     MessageRole,
 )
-from schemas.ai_model import (
+from backend.schemas.ai_model import (
     AIProvider,
     ModelStatus,
     TokenUsage,
     ModelTestResult,
     AICheckResult,
 )
-from config.database import get_db
-from core.logger import logger
-from core.security import decrypt_data
+from backend.config.database import get_db
+from backend.core.logger import logger
+from backend.core.security import decrypt_data
 
 
 class AIProviderBase(ABC):

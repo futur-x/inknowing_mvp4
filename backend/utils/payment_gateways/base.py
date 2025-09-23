@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 from uuid import UUID
 
-from models.payment import PaymentStatus
+from backend.models.payment import PaymentStatus
 
 
 @dataclass

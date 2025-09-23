@@ -7,8 +7,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from config.database import DATABASE_URL
-from services.ai import AIService
+from backend.config.database import DATABASE_URL
+from backend.services.ai import AIService
 import logging
 
 logging.basicConfig(level=logging.INFO)

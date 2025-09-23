@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, and_, desc
 from sqlalchemy.sql import text
 
-from models.book import Book, BookStatus
-from core.exceptions import BadRequestException
+from backend.models.book import Book, BookStatus
+from backend.core.exceptions import BadRequestException
 
 
 class SearchService:

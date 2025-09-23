@@ -13,7 +13,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy import text
 from redis import Redis
 
-from models.monitoring import (
+from backend.models.monitoring import (
     SystemAlert,
     SystemMetric,
     ApiHealthCheck,
@@ -21,13 +21,13 @@ from models.monitoring import (
     AlertType,
     AlertStatus
 )
-from models.user import User
-from models.dialogue import DialogueSession, DialogueMessage, AIUsageTracking
-from models.book import Book
-from models.upload import Upload
-from models.payment import Payment
-from core.cache import cache_manager
-from core.logger import get_logger
+from backend.models.user import User
+from backend.models.dialogue import DialogueSession, DialogueMessage, AIUsageTracking
+from backend.models.book import Book
+from backend.models.upload import Upload
+from backend.models.payment import Payment
+from backend.core.cache import cache_manager
+from backend.core.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -657,3 +657,154 @@ class MonitoringService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to retrieve cost statistics"
             )
+
+    async def get_user_growth_trend(self, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
+        """Get user growth trend data"""
+        try:
+            # Get daily user registrations
+            stmt = text("""
+                SELECT DATE(created_at) as date, COUNT(*) as count
+                FROM users
+                WHERE created_at BETWEEN :start_date AND :end_date
+                GROUP BY DATE(created_at)
+                ORDER BY date
+            """)
+
+            result = await self.db.execute(stmt, {
+                "start_date": start_date,
+                "end_date": end_date
+            })
+
+            data = []
+            for row in result:
+                data.append({
+                    "date": row.date.isoformat() if hasattr(row.date, 'isoformat') else str(row.date),
+                    "count": row.count
+                })
+
+            return data
+
+        except Exception as e:
+            logger.error(f"Error getting user growth trend: {e}")
+            return []
+
+    async def get_dialogue_trend(self, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
+        """Get dialogue trend data"""
+        try:
+            stmt = text("""
+                SELECT DATE(created_at) as date, COUNT(*) as count
+                FROM dialogue_sessions
+                WHERE created_at BETWEEN :start_date AND :end_date
+                GROUP BY DATE(created_at)
+                ORDER BY date
+            """)
+
+            result = await self.db.execute(stmt, {
+                "start_date": start_date,
+                "end_date": end_date
+            })
+
+            data = []
+            for row in result:
+                data.append({
+                    "date": row.date.isoformat() if hasattr(row.date, 'isoformat') else str(row.date),
+                    "count": row.count
+                })
+
+            return data
+
+        except Exception as e:
+            logger.error(f"Error getting dialogue trend: {e}")
+            return []
+
+    async def get_book_category_distribution(self) -> List[Dict[str, Any]]:
+        """Get book distribution by category"""
+        try:
+            stmt = text("""
+                SELECT category, COUNT(*) as count
+                FROM books
+                WHERE status = 'active' AND category IS NOT NULL
+                GROUP BY category
+                ORDER BY count DESC
+            """)
+
+            result = await self.db.execute(stmt)
+
+            data = []
+            for row in result:
+                data.append({
+                    "category": row.category,
+                    "count": row.count
+                })
+
+            return data
+
+        except Exception as e:
+            logger.error(f"Error getting book category distribution: {e}")
+            return []
+
+    async def get_user_activity_heatmap(self, days: int = 7) -> Dict[str, List[int]]:
+        """Get user activity heatmap data"""
+        try:
+            start_date = datetime.utcnow() - timedelta(days=days)
+
+            # Get hourly activity for the past N days
+            stmt = text("""
+                SELECT
+                    EXTRACT(DOW FROM created_at) as day_of_week,
+                    EXTRACT(HOUR FROM created_at) as hour,
+                    COUNT(*) as count
+                FROM dialogue_messages
+                WHERE created_at >= :start_date
+                GROUP BY day_of_week, hour
+                ORDER BY day_of_week, hour
+            """)
+
+            result = await self.db.execute(stmt, {"start_date": start_date})
+
+            # Initialize heatmap data (7 days x 24 hours)
+            heatmap = {}
+            days_of_week = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+            for day in days_of_week:
+                heatmap[day] = [0] * 24
+
+            # Fill in the data
+            for row in result:
+                day_idx = int(row.day_of_week)
+                hour = int(row.hour)
+                count = row.count
+                heatmap[days_of_week[day_idx]][hour] = count
+
+            return heatmap
+
+        except Exception as e:
+            logger.error(f"Error getting user activity heatmap: {e}")
+            return {}
+
+    async def get_system_announcements(self, limit: int = 5) -> List[Dict[str, Any]]:
+        """Get system announcements"""
+        try:
+            # For now, return static announcements
+            # In production, these would come from a database table
+            announcements = [
+                {
+                    "id": "1",
+                    "type": "info",
+                    "title": "系统维护通知",
+                    "content": "系统将于本周日凌晨2点进行例行维护",
+                    "created_at": datetime.utcnow().isoformat()
+                },
+                {
+                    "id": "2",
+                    "type": "success",
+                    "title": "新功能上线",
+                    "content": "AI对话功能已全面升级，体验更流畅",
+                    "created_at": (datetime.utcnow() - timedelta(days=1)).isoformat()
+                }
+            ]
+
+            return announcements[:limit]
+
+        except Exception as e:
+            logger.error(f"Error getting system announcements: {e}")
+            return []

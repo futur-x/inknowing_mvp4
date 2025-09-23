@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
 
-from config.database import AsyncSessionLocal
-from models.user import User
-from core.security import get_password_hash
+from backend.config.database import AsyncSessionLocal
+from backend.models.user import User
+from backend.core.security import get_password_hash
 
 async def create_test_user():
     async with AsyncSessionLocal() as db:

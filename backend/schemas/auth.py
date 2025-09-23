@@ -6,7 +6,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field, validator, EmailStr
 import re
 
-from models.user import MembershipType
+from backend.models.user import MembershipType
 
 
 class PhoneRegistration(BaseModel):

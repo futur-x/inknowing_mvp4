@@ -4,7 +4,7 @@ Run this to verify the AI service is working correctly
 """
 import asyncio
 import os
-from services.litellm_service import get_litellm_service
+from backend.services.litellm_service import get_litellm_service
 
 # Set environment variables for testing
 os.environ["AI_BASE_URL"] = "https://litellm.futurx.cc"

@@ -8,11 +8,11 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 
-from config.database import get_db
-from core.auth import get_current_user
-from models.user import User
-from models.dialogue import DialogueSession, DialogueMessage, DialogueStatus
-from schemas.dialogue import (
+from backend.config.database import get_db
+from backend.core.auth import get_current_user
+from backend.models.user import User
+from backend.models.dialogue import DialogueSession, DialogueMessage, DialogueStatus
+from backend.schemas.dialogue import (
     DialogueSessionCreate,
     CharacterDialogueSessionCreate,
     DialogueMessageCreate,
@@ -25,12 +25,12 @@ from schemas.dialogue import (
     WSTypingIndicator,
     WSError,
 )
-from services.dialogue import dialogue_service
-from services.ai_model import ai_service
-from core.logger import logger
+from backend.services.dialogue import dialogue_service
+from backend.services.ai_model import ai_service
+from backend.core.logger import logger
 
 
-router = APIRouter(prefix="/dialogues", tags=["Dialogues"])
+router = APIRouter(prefix="/dialogues", tags=["Dialogue"])
 
 
 @router.post("/book/start", response_model=DialogueSessionResponse, status_code=status.HTTP_201_CREATED)

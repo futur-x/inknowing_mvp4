@@ -1,19 +1,24 @@
 """
 Admin API endpoints
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select, func, desc
 
-from config.database import get_db
-from models.admin import Admin, AdminRole
-from services.admin_auth import AdminAuthService
-from services.admin import AdminService
-from services.monitoring import MonitoringService
-from schemas.admin import (
+from backend.config.database import get_db
+from backend.models.admin import Admin, AdminRole
+from backend.models.user import User
+from backend.models.book import Book
+from backend.models.dialogue import DialogueSession
+from backend.services.admin_auth import AdminAuthService
+from backend.services.admin import AdminService
+from backend.services.monitoring import MonitoringService
+from backend.services.book_admin import BookAdminService
+from backend.schemas.admin import (
     # Auth
     AdminLogin,
     AdminAuthResponse,
@@ -24,16 +29,6 @@ from schemas.admin import (
     CostStatistics,
     DialogueStatistics,
     SystemAlert,
-)
-from schemas.monitoring import (
-    EnhancedDashboardStats,
-    EnhancedCostStatistics,
-    EnhancedDialogueStatistics,
-    SystemAlertCreate,
-    SystemAlertUpdate,
-    SystemAlertResponse,
-    AlertsListResponse,
-    SystemHealthResponse,
     # User Management
     AdminUserResponse,
     AdminUserUpdate,
@@ -59,8 +54,18 @@ from schemas.monitoring import (
     AuditLogResponse,
     AuditLogListResponse,
 )
-from models.user import MembershipType
-from utils.logger import logger
+from backend.schemas.monitoring import (
+    EnhancedDashboardStats,
+    EnhancedCostStatistics,
+    EnhancedDialogueStatistics,
+    SystemAlertCreate,
+    SystemAlertUpdate,
+    SystemAlertResponse,
+    AlertsListResponse,
+    SystemHealthResponse,
+)
+from backend.models.user import MembershipType
+from backend.core.logger import logger
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -87,7 +92,7 @@ async def get_current_admin(
     return admin
 
 
-async def require_permission(permission: str):
+def require_permission(permission: str):
     """Dependency to check admin permission"""
     async def check_permission(
         admin: Admin = Depends(get_current_admin)
@@ -101,7 +106,7 @@ async def require_permission(permission: str):
     return check_permission
 
 
-async def require_super_admin():
+def require_super_admin():
     """Dependency to require super admin role"""
     async def check_super_admin(
         admin: Admin = Depends(get_current_admin)
@@ -246,6 +251,165 @@ async def get_dashboard(
     }
 
 
+@router.get("/stats", response_model=Dict[str, Any])
+async def get_admin_stats(
+    admin: Admin = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get comprehensive admin statistics for dashboard"""
+    monitoring_service = MonitoringService(db)
+    admin_service = AdminService(db)
+
+    # Get various statistics
+    user_stats = await admin_service.get_user_stats()
+    book_stats = await admin_service.get_book_stats()
+    dialogue_stats = await admin_service.get_dialogue_stats_summary()
+
+    # Get today's metrics
+    today = datetime.utcnow().date()
+    today_start = datetime.combine(today, datetime.min.time())
+
+    # Get new users today
+    stmt = select(func.count(User.id)).where(
+        User.created_at >= today_start
+    )
+    result = await db.execute(stmt)
+    new_users_today = result.scalar() or 0
+
+    # Get dialogues today
+    stmt = select(func.count(DialogueSession.id)).where(
+        DialogueSession.created_at >= today_start
+    )
+    result = await db.execute(stmt)
+    dialogues_today = result.scalar() or 0
+
+    # Get active users (last 24h)
+    active_since = datetime.utcnow() - timedelta(hours=24)
+    stmt = select(func.count(User.id)).where(
+        User.last_active >= active_since
+    )
+    result = await db.execute(stmt)
+    active_users = result.scalar() or 0
+
+    return {
+        "total_users": user_stats.get("total_users", 0),
+        "total_books": book_stats.get("total_books", 0),
+        "today_dialogues": dialogues_today,
+        "active_users": active_users,
+        "new_users_today": new_users_today,
+        "total_dialogues": dialogue_stats.get("total_dialogues", 0),
+        "user_stats": user_stats,
+        "book_stats": book_stats,
+        "dialogue_stats": dialogue_stats
+    }
+
+
+@router.get("/trends", response_model=Dict[str, Any])
+async def get_trends_data(
+    period: int = 7,  # days
+    admin: Admin = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get trend data for charts"""
+    monitoring_service = MonitoringService(db)
+
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=period)
+
+    # Get user growth trend
+    user_trend = await monitoring_service.get_user_growth_trend(start_date, end_date)
+
+    # Get dialogue trend
+    dialogue_trend = await monitoring_service.get_dialogue_trend(start_date, end_date)
+
+    # Get book category distribution
+    book_distribution = await monitoring_service.get_book_category_distribution()
+
+    # Get user activity heatmap data
+    activity_heatmap = await monitoring_service.get_user_activity_heatmap(period)
+
+    return {
+        "user_growth": user_trend,
+        "dialogue_trend": dialogue_trend,
+        "book_distribution": book_distribution,
+        "activity_heatmap": activity_heatmap,
+        "period_days": period
+    }
+
+
+@router.get("/recent-activities", response_model=Dict[str, Any])
+async def get_recent_activities(
+    limit: int = 10,
+    admin: Admin = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get recent system activities"""
+    monitoring_service = MonitoringService(db)
+
+    # Get recent users
+    stmt = select(User).order_by(desc(User.created_at)).limit(limit)
+    result = await db.execute(stmt)
+    recent_users = result.scalars().all()
+
+    # Get recent dialogues
+    stmt = (
+        select(DialogueSession, User, Book)
+        .join(User, DialogueSession.user_id == User.id)
+        .join(Book, DialogueSession.book_id == Book.id)
+        .order_by(desc(DialogueSession.created_at))
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    recent_dialogues = [
+        {
+            "id": str(row[0].id),
+            "user": row[1].username,
+            "book": row[2].title,
+            "created_at": row[0].created_at.isoformat(),
+            "status": row[0].status
+        }
+        for row in result.all()
+    ]
+
+    # Get popular books
+    stmt = (
+        select(Book, func.count(DialogueSession.id).label("dialogue_count"))
+        .join(DialogueSession, Book.id == DialogueSession.book_id, isouter=True)
+        .group_by(Book.id)
+        .order_by(desc("dialogue_count"))
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    popular_books = [
+        {
+            "id": str(row[0].id),
+            "title": row[0].title,
+            "author": row[0].author,
+            "dialogue_count": row[1] or 0,
+            "rating": row[0].rating
+        }
+        for row in result.all()
+    ]
+
+    # Get system announcements (if any)
+    announcements = await monitoring_service.get_system_announcements(limit=5)
+
+    return {
+        "recent_users": [
+            {
+                "id": str(u.id),
+                "username": u.username,
+                "created_at": u.created_at.isoformat(),
+                "membership": u.membership_type
+            }
+            for u in recent_users
+        ],
+        "recent_dialogues": recent_dialogues,
+        "popular_books": popular_books,
+        "announcements": announcements
+    }
+
+
 @router.get("/statistics/costs", response_model=EnhancedCostStatistics)
 async def get_cost_statistics(
     period: str = "month",
@@ -314,17 +478,27 @@ async def list_users(
     search: Optional[str] = None,
     membership: Optional[MembershipType] = None,
     status: Optional[str] = "all",
+    role: Optional[str] = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
+    registered_from: Optional[datetime] = None,
+    registered_to: Optional[datetime] = None,
     page: int = 1,
     limit: int = 50,
     admin: Admin = Depends(require_permission("users:read")),
     db: AsyncSession = Depends(get_db)
 ):
-    """List users with filters"""
+    """List users with advanced filters"""
     service = AdminService(db)
     return await service.list_users(
         search=search,
         membership=membership,
         status=status,
+        role=role,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        registered_from=registered_from,
+        registered_to=registered_to,
         page=page,
         limit=limit
     )
@@ -359,21 +533,198 @@ async def update_user(
     )
 
 
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: str,
+    admin: Admin = Depends(require_permission("users:delete")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete user account"""
+    service = AdminService(db)
+    await service.delete_user(admin=admin, user_id=user_id)
+    return None
+
+
+@router.post("/users/{user_id}/status", response_model=AdminUserResponse)
+async def change_user_status(
+    user_id: str,
+    status_data: Dict[str, str],
+    admin: Admin = Depends(require_permission("users:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Change user status (active, suspended, banned)"""
+    service = AdminService(db)
+    new_status = UserStatus(status_data.get("status"))
+    reason = status_data.get("reason", "")
+    duration = status_data.get("duration")  # For temporary suspension
+
+    return await service.change_user_status(
+        admin=admin,
+        user_id=user_id,
+        new_status=new_status,
+        reason=reason,
+        duration=duration
+    )
+
+
+@router.post("/users/{user_id}/reset-password", status_code=status.HTTP_200_OK)
+async def reset_user_password(
+    user_id: str,
+    admin: Admin = Depends(require_permission("users:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Reset user password and send notification"""
+    service = AdminService(db)
+    result = await service.reset_user_password(
+        admin=admin,
+        user_id=user_id
+    )
+    return result
+
+
+@router.get("/users/{user_id}/activities", response_model=Dict[str, Any])
+async def get_user_activities(
+    user_id: str,
+    activity_type: Optional[str] = None,
+    limit: int = 50,
+    admin: Admin = Depends(require_permission("users:read")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get user activity history"""
+    service = AdminService(db)
+    return await service.get_user_activities(
+        user_id=user_id,
+        activity_type=activity_type,
+        limit=limit
+    )
+
+
+@router.post("/users/batch", response_model=Dict[str, Any])
+async def batch_user_operation(
+    operation_data: Dict[str, Any],
+    admin: Admin = Depends(require_permission("users:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Perform batch operations on multiple users"""
+    service = AdminService(db)
+
+    user_ids = operation_data.get("user_ids", [])
+    operation = operation_data.get("operation")  # suspend, ban, delete, change_membership
+    params = operation_data.get("params", {})
+
+    return await service.batch_user_operation(
+        admin=admin,
+        user_ids=user_ids,
+        operation=operation,
+        params=params
+    )
+
+
+@router.get("/users/export", response_model=Dict[str, str])
+async def export_users(
+    format: str = "csv",  # csv or excel
+    filters: Optional[str] = None,
+    admin: Admin = Depends(require_permission("users:export")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Export user data to CSV or Excel"""
+    service = AdminService(db)
+
+    # Parse filters if provided
+    filter_dict = {}
+    if filters:
+        import json
+        filter_dict = json.loads(filters)
+
+    file_path = await service.export_users(
+        admin=admin,
+        format=format,
+        filters=filter_dict
+    )
+
+    return {"file_url": file_path}
+
+
+@router.get("/users/{user_id}/points", response_model=Dict[str, Any])
+async def get_user_points(
+    user_id: str,
+    admin: Admin = Depends(require_permission("users:read")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get user points/credits information"""
+    service = AdminService(db)
+    return await service.get_user_points(user_id=user_id)
+
+
+@router.post("/users/{user_id}/points", response_model=Dict[str, Any])
+async def adjust_user_points(
+    user_id: str,
+    points_data: Dict[str, Any],
+    admin: Admin = Depends(require_permission("users:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Adjust user points/credits balance"""
+    service = AdminService(db)
+
+    amount = points_data.get("amount", 0)
+    reason = points_data.get("reason", "Admin adjustment")
+    operation = points_data.get("operation", "add")  # add or set
+
+    return await service.adjust_user_points(
+        admin=admin,
+        user_id=user_id,
+        amount=amount,
+        operation=operation,
+        reason=reason
+    )
+
+
 # ==================== Book Management Endpoints ====================
 @router.get("/books", response_model=BookListResponse)
 async def list_books(
-    status: Optional[str] = "all",
-    type: Optional[str] = "all",
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    type: Optional[str] = None,
+    category: Optional[str] = None,
+    language: Optional[str] = None,
+    ai_known: Optional[bool] = None,
+    vector_status: Optional[str] = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
     page: int = 1,
-    limit: int = 50,
+    limit: int = 20,
     admin: Admin = Depends(require_permission("books:read")),
     db: AsyncSession = Depends(get_db)
 ):
-    """List all books with filters"""
-    service = AdminService(db)
-    return await service.list_books(
-        status=status,
-        type=type,
+    """List all books with advanced filters"""
+    book_service = BookAdminService(db)
+
+    # Convert status string to enum if provided
+    from models.book import BookStatus, BookType
+    status_enum = None
+    if status and status != "all":
+        try:
+            status_enum = BookStatus(status)
+        except ValueError:
+            pass
+
+    type_enum = None
+    if type and type != "all":
+        try:
+            type_enum = BookType(type)
+        except ValueError:
+            pass
+
+    return await book_service.list_books_advanced(
+        search=search,
+        status=status_enum,
+        type=type_enum,
+        category=category,
+        language=language,
+        ai_known=ai_known,
+        vector_status=vector_status,
+        sort_by=sort_by,
+        sort_order=sort_order,
         page=page,
         limit=limit
     )
@@ -408,8 +759,8 @@ async def get_book_details(
     db: AsyncSession = Depends(get_db)
 ):
     """Get book details"""
-    # Implementation would fetch book details
-    raise HTTPException(status_code=501, detail="Not implemented")
+    book_service = BookAdminService(db)
+    return await book_service.get_book_details(book_id)
 
 
 @router.put("/books/{book_id}", response_model=AdminBookResponse)
@@ -420,8 +771,26 @@ async def update_book(
     db: AsyncSession = Depends(get_db)
 ):
     """Update book"""
-    # Implementation would update book
-    raise HTTPException(status_code=501, detail="Not implemented")
+    book_service = BookAdminService(db)
+    return await book_service.update_book(
+        admin=admin,
+        book_id=book_id,
+        title=update_data.title,
+        author=update_data.author,
+        isbn=update_data.isbn,
+        cover_url=update_data.cover_url,
+        category=update_data.category,
+        subcategory=update_data.subcategory,
+        description=update_data.description,
+        synopsis=update_data.synopsis,
+        status=update_data.status,
+        language=update_data.language,
+        publish_year=update_data.publish_year,
+        publisher=update_data.publisher,
+        page_count=update_data.page_count,
+        word_count=update_data.word_count,
+        seo_keywords=update_data.seo_keywords
+    )
 
 
 @router.delete("/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -431,8 +800,83 @@ async def delete_book(
     db: AsyncSession = Depends(get_db)
 ):
     """Delete book"""
-    # Implementation would delete book
-    raise HTTPException(status_code=501, detail="Not implemented")
+    book_service = BookAdminService(db)
+    await book_service.delete_book(admin=admin, book_id=book_id)
+    return None
+
+
+@router.post("/books/{book_id}/approve", response_model=AdminBookResponse)
+async def approve_book(
+    book_id: str,
+    vectorize: bool = True,
+    admin: Admin = Depends(require_permission("books:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Approve a book for publication"""
+    book_service = BookAdminService(db)
+    return await book_service.approve_book(
+        admin=admin,
+        book_id=book_id,
+        vectorize=vectorize
+    )
+
+
+@router.post("/books/{book_id}/reject", response_model=AdminBookResponse)
+async def reject_book(
+    book_id: str,
+    reason: str,
+    admin: Admin = Depends(require_permission("books:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Reject a book"""
+    book_service = BookAdminService(db)
+    return await book_service.reject_book(
+        admin=admin,
+        book_id=book_id,
+        reason=reason
+    )
+
+
+@router.post("/books/{book_id}/vectorize", response_model=Dict[str, Any])
+async def vectorize_book(
+    book_id: str,
+    admin: Admin = Depends(require_permission("books:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Start vectorization process for a book"""
+    book_service = BookAdminService(db)
+    return await book_service.vectorize_book(
+        admin=admin,
+        book_id=book_id
+    )
+
+
+@router.get("/books/stats", response_model=Dict[str, Any])
+async def get_book_statistics(
+    admin: Admin = Depends(require_permission("books:read")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get comprehensive book statistics"""
+    book_service = BookAdminService(db)
+    return await book_service.get_book_statistics()
+
+
+@router.post("/books/batch", response_model=Dict[str, Any])
+async def batch_book_operation(
+    book_ids: List[str],
+    action: str,
+    params: Optional[Dict[str, Any]] = None,
+    admin: Admin = Depends(require_permission("books:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Perform batch operations on multiple books"""
+    book_service = BookAdminService(db)
+    return await book_service.batch_update_books(
+        admin=admin,
+        book_ids=book_ids,
+        action=action,
+        params=params or {}
+    )
 
 
 @router.post("/books/{book_id}/review", response_model=AdminBookResponse)
@@ -442,15 +886,25 @@ async def review_book(
     admin: Admin = Depends(require_permission("uploads:review")),
     db: AsyncSession = Depends(get_db)
 ):
-    """Review uploaded book"""
-    service = AdminService(db)
-    return await service.review_book(
-        admin=admin,
-        book_id=book_id,
-        action=review_data.action,
-        reason=review_data.reason,
-        vectorize=review_data.vectorize
-    )
+    """Review uploaded book (legacy endpoint for compatibility)"""
+    book_service = BookAdminService(db)
+    if review_data.action == "approve":
+        return await book_service.approve_book(
+            admin=admin,
+            book_id=book_id,
+            vectorize=review_data.vectorize
+        )
+    elif review_data.action == "reject":
+        return await book_service.reject_book(
+            admin=admin,
+            book_id=book_id,
+            reason=review_data.reason or "Rejected by admin"
+        )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid review action"
+        )
 
 
 @router.post("/books/ai-check", response_model=AICheckResult)
@@ -630,24 +1084,25 @@ async def get_system_health(
     }
 
 
-@router.post("/monitoring/metrics", status_code=status.HTTP_201_CREATED)
-async def record_metrics(
-    metrics_data: MetricsCollectionRequest,
-    admin: Admin = Depends(require_permission("monitoring:write")),
-    db: AsyncSession = Depends(get_db)
-):
-    """Record system metrics"""
-    monitoring_service = MonitoringService(db)
-
-    for metric_point in metrics_data.metrics:
-        await monitoring_service.record_metric(
-            metric_name=metric_point.metric_name,
-            value=metric_point.value,
-            tags=metric_point.tags,
-            source=metrics_data.source
-        )
-
-    return {"message": f"Recorded {len(metrics_data.metrics)} metrics successfully"}
+# TODO: Implement record_metrics endpoint when MetricsCollectionRequest schema is available
+# @router.post("/monitoring/metrics", status_code=status.HTTP_201_CREATED)
+# async def record_metrics(
+#     metrics_data: dict,  # MetricsCollectionRequest - TODO: Add schema
+#     admin: Admin = Depends(require_permission("monitoring:write")),
+#     db: AsyncSession = Depends(get_db)
+# ):
+#     """Record system metrics"""
+#     monitoring_service = MonitoringService(db)
+#
+#     for metric_point in metrics_data.metrics:
+#         await monitoring_service.record_metric(
+#             metric_name=metric_point.metric_name,
+#             value=metric_point.value,
+#             tags=metric_point.tags,
+#             source=metrics_data.source
+#         )
+#
+#     return {"message": f"Recorded {len(metrics_data.metrics)} metrics successfully"}
 
 
 @router.get("/statistics/dialogues", response_model=EnhancedDialogueStatistics)

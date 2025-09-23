@@ -7,9 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Body, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 
-from config.database import get_db
-from core.auth import get_current_user
-from schemas.payment import (
+from backend.config.database import get_db
+from backend.core.auth import get_current_user
+from backend.schemas.payment import (
     CreatePaymentRequest,
     CreateSubscriptionRequest,
     UpdateSubscriptionRequest,
@@ -34,16 +34,16 @@ from schemas.payment import (
     BillingCycle,
     MembershipPlan
 )
-from services.payment import payment_service
-from models.user import User
-from models.payment import PaymentMethod
-from utils.payment_gateways import StripeGateway, AlipayGateway, WeChatPayGateway
+from backend.services.payment import payment_service
+from backend.models.user import User
+from backend.models.payment import PaymentMethod
+from backend.utils.payment_gateways import StripeGateway, AlipayGateway, WeChatPayGateway
 from datetime import datetime
-from core.exceptions import PaymentException
+from backend.core.exceptions import PaymentException
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/payment", tags=["payment"])
+router = APIRouter(prefix="/payment", tags=["Payment"])
 
 
 @router.post("/create", response_model=PaymentResponse)

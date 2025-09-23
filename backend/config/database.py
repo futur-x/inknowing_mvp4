@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.pool import NullPool
 
-from config.settings import settings
+from backend.config.settings import settings
 
 # Create async engine
 engine = create_async_engine(

@@ -11,9 +11,9 @@ from passlib.context import CryptContext
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from config.settings import settings
-from models.admin import Admin, AdminToken, AdminStatus, AuditLog, AuditActionType
-from core.logger import logger
+from backend.config.settings import settings
+from backend.models.admin import Admin, AdminToken, AdminStatus, AuditLog, AuditActionType
+from backend.core.logger import logger
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Any
 
 from pydantic import BaseModel, Field
 
-from schemas.common import PaginationQuery, PaginatedResponse
+from backend.schemas.common import PaginationQuery, PaginatedResponse
 
 
 # ==================== Dialogue Session ====================

@@ -4,16 +4,16 @@ Search API endpoints
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config.database import get_db
-from services.search import SearchService
-from schemas.search import (
+from backend.config.database import get_db
+from backend.services.search import SearchService
+from backend.schemas.search import (
     SearchTypeEnum,
     SearchResults,
     BookSearchParams
 )
-from schemas.book import BookList
+from backend.schemas.book import BookList
 
-router = APIRouter()
+router = APIRouter(tags=["Search"])
 
 
 @router.get("/search", response_model=SearchResults)

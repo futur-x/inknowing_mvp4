@@ -9,9 +9,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from config.settings import settings
-from config.database import init_db, close_db
-from api.v1 import api_router
+from backend.config.settings import settings
+from backend.config.database import init_db, close_db
+from backend.api.v1 import api_router
 
 # Configure logging
 logging.basicConfig(
@@ -56,8 +56,8 @@ app = FastAPI(
     - Multi-tier membership system
     """,
     version=settings.APP_VERSION,
-    docs_url="/docs" if settings.DEBUG else None,
-    redoc_url="/redoc" if settings.DEBUG else None,
+    docs_url="/docs",  # Always enable docs for development
+    redoc_url="/redoc",  # Always enable redoc for development
     lifespan=lifespan,
 )
 
@@ -110,13 +110,15 @@ async def root():
 
 
 # Health check endpoint
-@app.get("/health", response_model=Dict[str, str])
+@app.get("/health", response_model=Dict[str, Any])
 async def health_check():
     """Health check endpoint for monitoring"""
     # TODO: Add actual health checks (database, cache, etc.)
     return {
         "status": "healthy",
         "database": "connected",
+        "debug": str(settings.DEBUG),
+        "docs_url": str(app.docs_url) if app.docs_url else "None",
     }
 
 

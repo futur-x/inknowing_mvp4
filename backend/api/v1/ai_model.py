@@ -7,10 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from config.database import get_db
-from core.auth import get_admin_user
-from models.admin import Admin, AIModelConfig
-from schemas.ai_model import (
+from backend.config.database import get_db
+from backend.core.auth import get_admin_user
+from backend.models.admin import Admin, AIModelConfig
+from backend.schemas.ai_model import (
     AIModelCreate,
     AIModelUpdate,
     AIModelResponse,
@@ -22,9 +22,9 @@ from schemas.ai_model import (
     CostStatistics,
     TokenUsageStats,
 )
-from services.ai_model import ai_service
-from core.security import encrypt_data, decrypt_data
-from core.logger import logger
+from backend.services.ai_model import ai_service
+from backend.core.security import encrypt_data, decrypt_data
+from backend.core.logger import logger
 
 
 router = APIRouter(prefix="/admin/models", tags=["Admin - AI Models"])

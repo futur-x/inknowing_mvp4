@@ -11,17 +11,17 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config.database import get_db
-from core.auth import get_current_user, require_user
-from models.user import User
-from models.upload import Upload, UploadStatus
-from schemas.upload import (
+from backend.config.database import get_db
+from backend.core.auth import get_current_user, require_user
+from backend.models.user import User
+from backend.models.upload import Upload, UploadStatus
+from backend.schemas.upload import (
     BookCheckRequest, BookCheckResponse,
     UploadResponse, UploadListResponse,
     UploadFilters, BookCategoryEnum
 )
-from services.upload import UploadService
-from core.logger import get_logger
+from backend.services.upload import UploadService
+from backend.core.logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -10,9 +10,9 @@ from sqlalchemy import select, and_, or_, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
-from models.user import User, UserQuota, MembershipType
-from models.book import Book, BookCharacter
-from models.dialogue import (
+from backend.models.user import User, UserQuota, MembershipType
+from backend.models.book import Book, BookCharacter
+from backend.models.dialogue import (
     DialogueSession,
     DialogueMessage,
     DialogueContext,
@@ -21,7 +21,7 @@ from models.dialogue import (
     DialogueType,
     DialogueStatus,
 )
-from schemas.dialogue import (
+from backend.schemas.dialogue import (
     DialogueSessionCreate,
     CharacterDialogueSessionCreate,
     DialogueMessageCreate,
@@ -29,11 +29,11 @@ from schemas.dialogue import (
     DialogueMessageResponse,
     DialogueContextResponse,
 )
-from schemas.ai_model import VectorSearchQuery
-from services.ai_litellm import ai_service  # Use simplified LiteLLM service
-from services.vector_db import vector_service
-from services.user import check_user_quota
-from core.logger import logger
+from backend.schemas.ai_model import VectorSearchQuery
+from backend.services.ai_litellm import ai_service  # Use simplified LiteLLM service
+from backend.services.vector_db import vector_service
+from backend.services.user import check_user_quota
+from backend.core.logger import logger
 
 
 class DialogueService:

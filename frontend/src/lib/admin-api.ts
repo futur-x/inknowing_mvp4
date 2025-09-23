@@ -1,4 +1,4 @@
-import { api } from './api';
+import { apiClient } from './api';
 
 // Admin Statistics
 export interface PlatformStats {
@@ -125,13 +125,13 @@ export interface SupportTicket {
 class AdminAPI {
   // Statistics
   async getStats(): Promise<PlatformStats> {
-    const response = await api.get('/admin/stats');
-    return response.data;
+    const response = await apiClient.get('/admin/stats');
+    return response;
   }
 
   async getRealtimeStats(): Promise<PlatformStats> {
-    const response = await api.get('/admin/stats/realtime');
-    return response.data;
+    const response = await apiClient.get('/admin/stats/realtime');
+    return response;
   }
 
   // User Management
@@ -142,43 +142,139 @@ class AdminAPI {
     role?: string;
     status?: string;
     sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    membership?: string;
+    registeredFrom?: string;
+    registeredTo?: string;
   }): Promise<{
     users: AdminUser[];
     total: number;
     page: number;
     totalPages: number;
   }> {
-    const response = await api.get('/admin/users', { params });
-    return response.data;
+    const response = await apiClient.get('/admin/users', { params });
+    return response;
   }
 
   async getUserDetails(userId: string): Promise<AdminUser & {
     loginHistory: Array<{ ip: string; time: string; device: string }>;
     actions: Array<{ action: string; time: string; details: string }>;
   }> {
-    const response = await api.get(`/admin/users/${userId}`);
-    return response.data;
+    const response = await apiClient.get(`/admin/users/${userId}`);
+    return response;
   }
 
   async performUserAction(userId: string, action: AdminAction): Promise<void> {
-    await api.post(`/admin/users/${userId}/actions`, action);
+    await apiClient.post(`/admin/users/${userId}/actions`, action);
+  }
+
+  async updateUser(userId: string, updates: {
+    status?: string;
+    membership?: string;
+    quotaOverride?: number;
+  }): Promise<AdminUser> {
+    const response = await apiClient.patch(`/admin/users/${userId}`, updates);
+    return response;
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    await apiClient.delete(`/admin/users/${userId}`);
+  }
+
+  async changeUserStatus(userId: string, status: string, reason?: string, duration?: number): Promise<AdminUser> {
+    const response = await apiClient.post(`/admin/users/${userId}/status`, { status, reason, duration });
+    return response;
+  }
+
+  async resetUserPassword(userId: string): Promise<{ message: string; temporaryPassword?: string }> {
+    const response = await apiClient.post(`/admin/users/${userId}/reset-password`);
+    return response;
+  }
+
+  async getUserActivities(userId: string, activityType?: string, limit?: number): Promise<{
+    activities: Array<{
+      type: string;
+      timestamp: string;
+      details: any;
+    }>;
+    total: number;
+  }> {
+    const response = await apiClient.get(`/admin/users/${userId}/activities`, {
+      params: { activity_type: activityType, limit }
+    });
+    return response;
+  }
+
+  async batchUserOperation(userIds: string[], operation: string, params?: any): Promise<{
+    successful: string[];
+    failed: Array<{ user_id: string; error: string }>;
+    total: number;
+    success_count: number;
+    failure_count: number;
+  }> {
+    const response = await apiClient.post('/admin/users/batch', {
+      user_ids: userIds,
+      operation,
+      params
+    });
+    return response;
+  }
+
+  async exportUsers(format: 'csv' | 'excel', filters?: any): Promise<{ file_url: string }> {
+    const response = await apiClient.get('/admin/users/export', {
+      params: { format, filters: JSON.stringify(filters) }
+    });
+    return response;
+  }
+
+  async getUserPoints(userId: string): Promise<{
+    user_id: string;
+    balance: number;
+    total_earned: number;
+    total_spent: number;
+    last_transaction?: any;
+  }> {
+    const response = await apiClient.get(`/admin/users/${userId}/points`);
+    return response;
+  }
+
+  async adjustUserPoints(userId: string, amount: number, operation: 'add' | 'set' | 'subtract', reason: string): Promise<{
+    user_id: string;
+    old_balance: number;
+    new_balance: number;
+    adjustment: number;
+    reason: string;
+  }> {
+    const response = await apiClient.post(`/admin/users/${userId}/points`, { amount, operation, reason });
+    return response;
   }
 
   // Content Management
   async getBooks(params?: {
     page?: number;
     limit?: number;
-    status?: string;
     search?: string;
-    sortBy?: string;
+    status?: string;
+    type?: string;
+    category?: string;
+    language?: string;
+    ai_known?: boolean;
+    vector_status?: string;
+    sort_by?: string;
+    sort_order?: string;
   }): Promise<{
     books: AdminBook[];
-    total: number;
-    page: number;
-    totalPages: number;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      total_pages: number;
+      has_next: boolean;
+      has_prev: boolean;
+    };
   }> {
-    const response = await api.get('/admin/books', { params });
-    return response.data;
+    const response = await apiClient.get('/admin/books', { params });
+    return response;
   }
 
   async getBookDetails(bookId: string): Promise<AdminBook & {
@@ -186,20 +282,55 @@ class AdminAPI {
     characters: Array<{ id: string; name: string }>;
     reports: Array<{ userId: string; reason: string; time: string }>;
   }> {
-    const response = await api.get(`/admin/books/${bookId}`);
-    return response.data;
+    const response = await apiClient.get(`/admin/books/${bookId}`);
+    return response;
   }
 
-  async approveBook(bookId: string): Promise<void> {
-    await api.post(`/admin/books/${bookId}/approve`);
+  async approveBook(bookId: string, vectorize: boolean = true): Promise<any> {
+    const response = await apiClient.post(`/admin/books/${bookId}/approve`, null, {
+      params: { vectorize }
+    });
+    return response;
   }
 
-  async rejectBook(bookId: string, reason: string): Promise<void> {
-    await api.post(`/admin/books/${bookId}/reject`, { reason });
+  async rejectBook(bookId: string, reason: string): Promise<any> {
+    const response = await apiClient.post(`/admin/books/${bookId}/reject`, null, {
+      params: { reason }
+    });
+    return response;
   }
 
   async deleteBook(bookId: string): Promise<void> {
-    await api.delete(`/admin/books/${bookId}`);
+    await apiClient.delete(`/admin/books/${bookId}`);
+  }
+
+  async createBook(bookData: any): Promise<any> {
+    const response = await apiClient.post('/admin/books', bookData);
+    return response;
+  }
+
+  async updateBook(bookId: string, bookData: any): Promise<any> {
+    const response = await apiClient.put(`/admin/books/${bookId}`, bookData);
+    return response;
+  }
+
+  async vectorizeBook(bookId: string): Promise<any> {
+    const response = await apiClient.post(`/admin/books/${bookId}/vectorize`);
+    return response;
+  }
+
+  async batchBookOperation(bookIds: string[], action: string, params?: any): Promise<any> {
+    const response = await apiClient.post('/admin/books/batch', {
+      book_ids: bookIds,
+      action,
+      params
+    });
+    return response;
+  }
+
+  async getBookStats(): Promise<any> {
+    const response = await apiClient.get('/admin/books/stats');
+    return response;
   }
 
   // Dialogue Monitoring
@@ -215,8 +346,8 @@ class AdminAPI {
     page: number;
     totalPages: number;
   }> {
-    const response = await api.get('/admin/dialogues', { params });
-    return response.data;
+    const response = await apiClient.get('/admin/dialogues', { params });
+    return response;
   }
 
   async getDialogueMessages(dialogueId: string): Promise<Array<{
@@ -225,8 +356,8 @@ class AdminAPI {
     timestamp: string;
     tokens?: number;
   }>> {
-    const response = await api.get(`/admin/dialogues/${dialogueId}/messages`);
-    return response.data;
+    const response = await apiClient.get(`/admin/dialogues/${dialogueId}/messages`);
+    return response;
   }
 
   // Analytics
@@ -235,8 +366,8 @@ class AdminAPI {
     endDate?: string;
     metrics?: string[];
   }): Promise<AdminAnalytics> {
-    const response = await api.get('/admin/analytics', { params });
-    return response.data;
+    const response = await apiClient.get('/admin/analytics', { params });
+    return response;
   }
 
   async exportAnalytics(params: {
@@ -244,33 +375,33 @@ class AdminAPI {
     endDate: string;
     format: 'csv' | 'json' | 'excel';
   }): Promise<Blob> {
-    const response = await api.get('/admin/analytics/export', {
+    const response = await apiClient.get('/admin/analytics/export', {
       params,
       responseType: 'blob'
     });
-    return response.data;
+    return response;
   }
 
   // System Configuration
   async getConfig(): Promise<AdminConfig> {
-    const response = await api.get('/admin/config');
-    return response.data;
+    const response = await apiClient.get('/admin/config');
+    return response;
   }
 
   async updateConfig(config: Partial<AdminConfig>): Promise<void> {
-    await api.put('/admin/config', config);
+    await apiClient.put('/admin/config', config);
   }
 
   async toggleFeature(feature: string, enabled: boolean): Promise<void> {
-    await api.post('/admin/config/features', { feature, enabled });
+    await apiClient.post('/admin/config/features', { feature, enabled });
   }
 
   async updateQuotas(quotas: AdminConfig['quotas']): Promise<void> {
-    await api.put('/admin/config/quotas', quotas);
+    await apiClient.put('/admin/config/quotas', quotas);
   }
 
   async updatePricing(pricing: AdminConfig['pricing']): Promise<void> {
-    await api.put('/admin/config/pricing', pricing);
+    await apiClient.put('/admin/config/pricing', pricing);
   }
 
   // Support
@@ -286,8 +417,8 @@ class AdminAPI {
     page: number;
     totalPages: number;
   }> {
-    const response = await api.get('/admin/support/tickets', { params });
-    return response.data;
+    const response = await apiClient.get('/admin/support/tickets', { params });
+    return response;
   }
 
   async getTicketDetails(ticketId: string): Promise<SupportTicket & {
@@ -297,16 +428,16 @@ class AdminAPI {
       timestamp: string;
     }>;
   }> {
-    const response = await api.get(`/admin/support/tickets/${ticketId}`);
-    return response.data;
+    const response = await apiClient.get(`/admin/support/tickets/${ticketId}`);
+    return response;
   }
 
   async updateTicket(ticketId: string, update: Partial<SupportTicket>): Promise<void> {
-    await api.put(`/admin/support/tickets/${ticketId}`, update);
+    await apiClient.put(`/admin/support/tickets/${ticketId}`, update);
   }
 
   async replyToTicket(ticketId: string, message: string): Promise<void> {
-    await api.post(`/admin/support/tickets/${ticketId}/reply`, { message });
+    await apiClient.post(`/admin/support/tickets/${ticketId}/reply`, { message });
   }
 
   // Announcements
@@ -316,7 +447,7 @@ class AdminAPI {
     type: 'info' | 'warning' | 'success';
     targetUsers?: 'all' | 'free' | 'paid';
   }): Promise<void> {
-    await api.post('/admin/announcements', announcement);
+    await apiClient.post('/admin/announcements', announcement);
   }
 
   // Audit Log
@@ -343,8 +474,8 @@ class AdminAPI {
     page: number;
     totalPages: number;
   }> {
-    const response = await api.get('/admin/audit-log', { params });
-    return response.data;
+    const response = await apiClient.get('/admin/audit-log', { params });
+    return response;
   }
 
   // WebSocket for real-time monitoring

@@ -225,12 +225,12 @@ api:
       books: "GET /search/books"
 
     dialogue:
-      start_book: "POST /dialogues/book/start"
-      start_character: "POST /dialogues/character/start"
-      send_message: "POST /dialogues/{id}/messages"
-      get_messages: "GET /dialogues/{id}/messages"
-      get_context: "GET /dialogues/{id}/context"
-      history: "GET /dialogues/history"
+      start_book: "POST /dialogue/book/start"
+      start_character: "POST /dialogue/character/start"
+      send_message: "POST /dialogue/{id}/messages"
+      get_messages: "GET /dialogue/{id}/messages"
+      get_context: "GET /dialogue/{id}/context"
+      history: "GET /dialogue/history"
 
     upload:
       check: "POST /uploads/check"
@@ -272,7 +272,7 @@ authentication:
     production: "client_side_only"  # 生产环境客户端处理
     protected_routes:
       - "/profile"
-      - "/dialogues"
+      - "/dialogue"
       - "/upload"
       - "/dashboard"
       - "/settings"

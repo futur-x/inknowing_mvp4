@@ -10,7 +10,7 @@ from passlib.context import CryptContext
 from cryptography.fernet import Fernet
 import base64
 
-from config.settings import settings
+from backend.config.settings import settings
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

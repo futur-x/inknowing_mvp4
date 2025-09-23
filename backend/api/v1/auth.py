@@ -9,9 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 
-from config.database import get_db
-from config.settings import settings
-from core.security import (
+from backend.config.database import get_db
+from backend.config.settings import settings
+from backend.core.security import (
     create_access_token,
     create_refresh_token,
     verify_password,
@@ -20,8 +20,8 @@ from core.security import (
     generate_username,
     generate_verification_code,
 )
-from models.user import User, Token, MembershipType, UserStatus
-from schemas.auth import (
+from backend.models.user import User, Token, MembershipType, UserStatus
+from backend.schemas.auth import (
     PhoneRegistration,
     WeChatRegistration,
     PhoneLogin,
@@ -33,7 +33,7 @@ from schemas.auth import (
     ErrorResponse,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["Authentication"])
 
 
 async def verify_sms_code(phone: str, code: str) -> bool:

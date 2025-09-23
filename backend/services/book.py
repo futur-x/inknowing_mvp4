@@ -8,9 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, desc
 from sqlalchemy.orm import selectinload
 
-from models.book import Book, BookType, BookStatus, BookCharacter
-from models.dialogue import DialogueSession
-from core.exceptions import NotFoundException, BadRequestException
+from backend.models.book import Book, BookType, BookStatus, BookCharacter
+from backend.models.dialogue import DialogueSession
+from backend.core.exceptions import NotFoundException, BadRequestException
 
 
 class BookService:

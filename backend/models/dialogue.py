@@ -15,7 +15,7 @@ from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from config.database import Base
+from backend.config.database import Base
 
 
 class DialogueType(str, PyEnum):

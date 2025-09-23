@@ -20,7 +20,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID as PostgresUUID, JSONB, ARRAY
 from sqlalchemy.orm import relationship
 
-from config.database import Base
+from backend.config.database import Base
 
 
 class BookType(str, enum.Enum):

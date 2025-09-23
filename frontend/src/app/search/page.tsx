@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 /**
  * Search type options
  */
-export enum SearchType {
+enum SearchType {
   QUESTION = 'question',
   TITLE = 'title',
   AUTHOR = 'author',

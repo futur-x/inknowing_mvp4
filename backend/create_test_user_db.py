@@ -6,7 +6,7 @@ import asyncio
 import uuid
 from datetime import datetime
 import asyncpg
-from core.security import get_password_hash
+from backend.core.security import get_password_hash
 
 async def create_test_user():
     """Create a test user directly in the database"""

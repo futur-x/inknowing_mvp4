@@ -12,7 +12,7 @@ import uuid
 import enum
 from datetime import datetime
 
-from config.database import Base
+from backend.config.database import Base
 
 
 class FileType(str, enum.Enum):

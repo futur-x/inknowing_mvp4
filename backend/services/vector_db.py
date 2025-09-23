@@ -12,14 +12,14 @@ from chromadb.utils import embedding_functions
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
-from models.book import Book, BookChapter
-from schemas.ai_model import (
+from backend.models.book import Book, BookChapter
+from backend.schemas.ai_model import (
     VectorSearchQuery,
     VectorSearchResult,
     VectorIndexStatus,
 )
-from services.ai_model import ai_service
-from core.logger import logger
+from backend.services.ai_model import ai_service
+from backend.core.logger import logger
 
 
 class VectorDBService:

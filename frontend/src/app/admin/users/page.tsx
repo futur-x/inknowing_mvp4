@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
+
+// Dynamically import enhanced version to avoid SSR issues
+const EnhancedUsersManagementPage = dynamic(
+  () => import('./enhanced-page'),
+  { ssr: false }
+);
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -39,6 +46,7 @@ import {
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { adminApi, type AdminUser } from '@/lib/admin-api';
 import {
   Search,
@@ -73,6 +81,9 @@ export default function UsersManagementPage() {
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [showAddAdmin, setShowAddAdmin] = useState(false);
+
+  // Toggle for enhanced version
+  const [useEnhancedVersion, setUseEnhancedVersion] = useState(false);
 
   useEffect(() => {
     // Check for action parameter
@@ -153,6 +164,11 @@ export default function UsersManagementPage() {
     }
   };
 
+  // Render enhanced version if toggled
+  if (useEnhancedVersion) {
+    return <EnhancedUsersManagementPage />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -164,6 +180,13 @@ export default function UsersManagementPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant={useEnhancedVersion ? 'default' : 'outline'}
+            onClick={() => setUseEnhancedVersion(!useEnhancedVersion)}
+          >
+            <Shield className="h-4 w-4 mr-2" />
+            {useEnhancedVersion ? 'Enhanced Version' : 'Classic Version'}
+          </Button>
           <Button onClick={() => setShowAddAdmin(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
             Add Admin

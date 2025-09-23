@@ -5,10 +5,10 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config.database import get_db
-from core.dependencies import get_current_user
-from models.user import User
-from schemas.user import (
+from backend.config.database import get_db
+from backend.core.dependencies import get_current_user
+from backend.models.user import User
+from backend.schemas.user import (
     UserProfile,
     UserUpdate,
     QuotaResponse,
@@ -17,7 +17,7 @@ from schemas.user import (
     PaymentOrder,
     DialogueHistoryResponse,
 )
-from services.user import UserService
+from backend.services.user import UserService
 
 router = APIRouter(tags=["Users"])
 
@@ -35,45 +35,6 @@ async def get_user_profile(
     """
     service = UserService(db)
     user = await service.get_user_profile(current_user.id)
-
-    return UserProfile(
-        id=str(user.id),
-        username=user.username,
-        nickname=user.nickname,
-        avatar=user.avatar,
-        phone=user.phone,
-        wechat_openid=user.wechat_openid,
-        email=user.email,
-        membership=user.membership.value if hasattr(user.membership, 'value') else str(user.membership),
-        points=user.points,
-        total_dialogues=user.total_dialogues,
-        total_uploads=user.total_uploads,
-        created_at=user.created_at,
-        updated_at=user.updated_at,
-    )
-
-
-@router.put("/profile", response_model=UserProfile)
-async def update_user_profile(
-    update_data: UserUpdate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Update user profile
-
-    Args:
-        update_data: Fields to update (nickname, avatar)
-
-    Returns:
-        Updated user profile
-    """
-    service = UserService(db)
-    user = await service.update_user_profile(
-        current_user.id,
-        nickname=update_data.nickname,
-        avatar=update_data.avatar,
-    )
 
     return UserProfile(
         id=str(user.id),

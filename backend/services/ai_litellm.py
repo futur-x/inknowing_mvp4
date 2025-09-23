@@ -5,8 +5,8 @@ import os
 import time
 from typing import Optional, List, Dict, Any, AsyncGenerator
 from datetime import datetime
-from services.litellm_service import LiteLLMService
-from core.logger import logger
+from backend.services.litellm_service import LiteLLMService
+from backend.core.logger import logger
 
 
 class SimplifiedAIService:

@@ -307,7 +307,7 @@ endpoints:
 # ================================
 # 6. Dialogue Endpoints
 # ================================
-  dialogues:
+  dialogue:
     start_book_dialogue:
       method: "POST"
       path: "/dialogues/book/start"
@@ -542,7 +542,471 @@ endpoints:
             created_at: "datetime"
 
 # ================================
-# 10. Response Standards
+# 10. Admin Endpoints
+# ================================
+  admin:
+    auth:
+      login:
+        method: "POST"
+        path: "/admin/auth/login"
+        request:
+          body:
+            username: "string, required"
+            password: "string, required"
+        response:
+          success:
+            status: 200
+            body:
+              admin: "Admin object"
+              access_token: "string (JWT)"
+              refresh_token: "string (JWT)"
+
+      logout:
+        method: "POST"
+        path: "/admin/auth/logout"
+        authentication: "admin_required"
+        response:
+          success:
+            status: 200
+
+      refresh:
+        method: "POST"
+        path: "/admin/auth/refresh"
+        request:
+          body:
+            refresh_token: "string, required"
+        response:
+          success:
+            status: 200
+            body:
+              access_token: "string (JWT)"
+
+    dashboard:
+      stats:
+        method: "GET"
+        path: "/admin/dashboard/stats"
+        authentication: "admin_required"
+        response:
+          success:
+            status: 200
+            body:
+              user_stats: "object"
+              dialogue_stats: "object"
+              book_stats: "object"
+              system_stats: "object"
+
+    users:
+      list:
+        method: "GET"
+        path: "/admin/users"
+        authentication: "admin_required"
+        query_params:
+          page: "integer, default=1"
+          limit: "integer, default=20"
+          search: "string, optional"
+          membership: "string, optional"
+          status: "string, optional"
+        response:
+          success:
+            status: 200
+            body:
+              items: "User[] array"
+              total: "integer"
+
+      get:
+        method: "GET"
+        path: "/admin/users/{id}"
+        authentication: "admin_required"
+        path_params:
+          id: "uuid, required"
+        response:
+          success:
+            status: 200
+            body: "User object"
+
+      update:
+        method: "PATCH"
+        path: "/admin/users/{id}"
+        authentication: "admin_required"
+        path_params:
+          id: "uuid, required"
+        request:
+          body:
+            status: "string, optional"
+            membership_type: "string, optional"
+        response:
+          success:
+            status: 200
+
+    books:
+      list:
+        method: "GET"
+        path: "/admin/books"
+        authentication: "admin_required"
+        query_params:
+          page: "integer, default=1"
+          limit: "integer, default=20"
+          status: "string, optional"
+        response:
+          success:
+            status: 200
+            body:
+              items: "Book[] array"
+              total: "integer"
+
+      create:
+        method: "POST"
+        path: "/admin/books"
+        authentication: "admin_required"
+        request:
+          body:
+            title: "string, required"
+            author: "string, required"
+            description: "string, optional"
+        response:
+          success:
+            status: 201
+            body: "Book object"
+
+      update:
+        method: "PATCH"
+        path: "/admin/books/{id}"
+        authentication: "admin_required"
+        path_params:
+          id: "uuid, required"
+        request:
+          body:
+            title: "string, optional"
+            status: "string, optional"
+        response:
+          success:
+            status: 200
+
+      delete:
+        method: "DELETE"
+        path: "/admin/books/{id}"
+        authentication: "admin_required"
+        path_params:
+          id: "uuid, required"
+        response:
+          success:
+            status: 204
+
+# ================================
+# 11. Admin AI Model Endpoints
+# ================================
+  admin_ai_models:
+    list:
+      method: "GET"
+      path: "/admin/ai-models"
+      authentication: "admin_required"
+      response:
+        success:
+          status: 200
+          body:
+            models: "ModelConfig[] array"
+
+    get:
+      method: "GET"
+      path: "/admin/ai-models/{id}"
+      authentication: "admin_required"
+      path_params:
+        id: "string, model_id"
+      response:
+        success:
+          status: 200
+          body: "ModelConfig object"
+
+    update:
+      method: "PATCH"
+      path: "/admin/ai-models/{id}"
+      authentication: "admin_required"
+      path_params:
+        id: "string, model_id"
+      request:
+        body:
+          parameters: "object"
+          is_active: "boolean"
+      response:
+        success:
+          status: 200
+
+    test:
+      method: "POST"
+      path: "/admin/ai-models/{id}/test"
+      authentication: "admin_required"
+      path_params:
+        id: "string, model_id"
+      request:
+        body:
+          test_input: "string"
+      response:
+        success:
+          status: 200
+          body:
+            result: "string"
+            latency: "float"
+
+# ================================
+# 12. Admin Dialogue Management
+# ================================
+  admin_dialogues:
+    list:
+      method: "GET"
+      path: "/admin/dialogues"
+      authentication: "admin_required"
+      query_params:
+        page: "integer, default=1"
+        limit: "integer, default=20"
+        user_id: "uuid, optional"
+        book_id: "uuid, optional"
+        status: "string, optional"
+      response:
+        success:
+          status: 200
+          body:
+            items: "DialogueSession[] array"
+            total: "integer"
+
+    get:
+      method: "GET"
+      path: "/admin/dialogues/{id}"
+      authentication: "admin_required"
+      path_params:
+        id: "uuid, session_id"
+      response:
+        success:
+          status: 200
+          body: "DialogueSession with messages"
+
+    terminate:
+      method: "POST"
+      path: "/admin/dialogues/{id}/terminate"
+      authentication: "admin_required"
+      path_params:
+        id: "uuid, session_id"
+      response:
+        success:
+          status: 200
+
+# ================================
+# 13. Admin Analytics
+# ================================
+  admin_analytics:
+    user_activity:
+      method: "GET"
+      path: "/admin/analytics/user-activity"
+      authentication: "admin_required"
+      query_params:
+        period: "enum[day,week,month], default=week"
+        group_by: "enum[hour,day,week], default=day"
+      response:
+        success:
+          status: 200
+          body:
+            data: "array of activity data"
+
+    dialogue_stats:
+      method: "GET"
+      path: "/admin/analytics/dialogue-stats"
+      authentication: "admin_required"
+      query_params:
+        period: "enum[day,week,month], default=week"
+      response:
+        success:
+          status: 200
+          body:
+            total: "integer"
+            by_book: "object"
+            by_user: "object"
+
+    cost_analysis:
+      method: "GET"
+      path: "/admin/analytics/costs"
+      authentication: "admin_required"
+      query_params:
+        period: "enum[day,week,month], default=month"
+      response:
+        success:
+          status: 200
+          body:
+            total_cost: "float"
+            by_model: "object"
+            by_user: "object"
+
+# ================================
+# 14. Admin Monitoring
+# ================================
+  admin_monitoring:
+    system_status:
+      method: "GET"
+      path: "/admin/monitoring/system"
+      authentication: "admin_required"
+      response:
+        success:
+          status: 200
+          body:
+            status: "enum[healthy,degraded,critical]"
+            components: "object"
+
+    error_logs:
+      method: "GET"
+      path: "/admin/monitoring/errors"
+      authentication: "admin_required"
+      query_params:
+        severity: "enum[error,warning,info], optional"
+        page: "integer, default=1"
+        limit: "integer, default=50"
+      response:
+        success:
+          status: 200
+          body:
+            items: "ErrorLog[] array"
+            total: "integer"
+
+    performance_metrics:
+      method: "GET"
+      path: "/admin/monitoring/performance"
+      authentication: "admin_required"
+      query_params:
+        metric: "enum[latency,throughput,error_rate]"
+        period: "enum[hour,day,week], default=day"
+      response:
+        success:
+          status: 200
+          body:
+            data: "array of metric data"
+
+    alerts:
+      method: "GET"
+      path: "/admin/monitoring/alerts"
+      authentication: "admin_required"
+      query_params:
+        status: "enum[active,resolved], optional"
+      response:
+        success:
+          status: 200
+          body:
+            items: "Alert[] array"
+
+# ================================
+# 15. Admin Permissions
+# ================================
+  admin_permissions:
+    list:
+      method: "GET"
+      path: "/admin/permissions"
+      authentication: "admin_required"
+      response:
+        success:
+          status: 200
+          body:
+            items: "Permission[] array"
+
+    create:
+      method: "POST"
+      path: "/admin/permissions"
+      authentication: "admin_required"
+      request:
+        body:
+          name: "string, required"
+          resource: "string, required"
+          action: "string, required"
+      response:
+        success:
+          status: 201
+          body: "Permission object"
+
+    update:
+      method: "PATCH"
+      path: "/admin/permissions/{id}"
+      authentication: "admin_required"
+      path_params:
+        id: "uuid, required"
+      request:
+        body:
+          name: "string, optional"
+          description: "string, optional"
+      response:
+        success:
+          status: 200
+
+    delete:
+      method: "DELETE"
+      path: "/admin/permissions/{id}"
+      authentication: "admin_required"
+      path_params:
+        id: "uuid, required"
+      response:
+        success:
+          status: 204
+
+# ================================
+# 16. Admin Roles
+# ================================
+  admin_roles:
+    list:
+      method: "GET"
+      path: "/admin/roles"
+      authentication: "admin_required"
+      response:
+        success:
+          status: 200
+          body:
+            items: "Role[] array"
+
+    create:
+      method: "POST"
+      path: "/admin/roles"
+      authentication: "admin_required"
+      request:
+        body:
+          name: "string, required"
+          permissions: "string[] array"
+      response:
+        success:
+          status: 201
+          body: "Role object"
+
+    update:
+      method: "PATCH"
+      path: "/admin/roles/{id}"
+      authentication: "admin_required"
+      path_params:
+        id: "uuid, required"
+      request:
+        body:
+          name: "string, optional"
+          permissions: "string[] array, optional"
+      response:
+        success:
+          status: 200
+
+    delete:
+      method: "DELETE"
+      path: "/admin/roles/{id}"
+      authentication: "admin_required"
+      path_params:
+        id: "uuid, required"
+      response:
+        success:
+          status: 204
+
+    assign:
+      method: "POST"
+      path: "/admin/roles/{id}/assign"
+      authentication: "admin_required"
+      path_params:
+        id: "uuid, role_id"
+      request:
+        body:
+          user_id: "uuid, required"
+      response:
+        success:
+          status: 200
+
+# ================================
+# 17. Response Standards
 # ================================
 response_format:
   success:

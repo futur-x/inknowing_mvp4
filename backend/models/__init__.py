@@ -1,7 +1,7 @@
 """
 Database models
 """
-from models.user import (
+from backend.models.user import (
     User,
     UserProfile,
     UserQuota,
@@ -9,21 +9,21 @@ from models.user import (
     MembershipType,
     UserStatus,
 )
-from models.book import (
+from backend.models.book import (
     Book,
     BookCharacter,
     BookChapter,
     BookType,
     BookStatus,
 )
-from models.upload import (
+from backend.models.upload import (
     Upload,
     FileType,
     UploadStatus,
     ProcessingStep,
     StepStatus,
 )
-from models.payment import (
+from backend.models.payment import (
     Payment,
     Subscription,
     UserPaymentMethod,
@@ -33,7 +33,7 @@ from models.payment import (
     PaymentType,
     SubscriptionStatus,
 )
-from models.admin import (
+from backend.models.admin import (
     Admin,
     AdminToken,
     AdminRole,
@@ -43,7 +43,7 @@ from models.admin import (
     SystemConfig,
     AIModelConfig,
 )
-from models.dialogue import (
+from backend.models.dialogue import (
     DialogueSession,
     DialogueMessage,
     DialogueContext,
@@ -53,7 +53,7 @@ from models.dialogue import (
     DialogueStatus,
     MessageRole,
 )
-from models.monitoring import (
+from backend.models.monitoring import (
     SystemAlert,
     SystemMetric,
     ApiHealthCheck,

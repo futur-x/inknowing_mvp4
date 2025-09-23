@@ -17,7 +17,12 @@ import {
   LogOut,
   Shield,
   AlertCircle,
-  Activity
+  Activity,
+  MessageSquare,
+  Monitor,
+  FileText,
+  Bell,
+  Stethoscope
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -48,6 +53,13 @@ const adminNavItems = [
     description: 'User management and roles'
   },
   {
+    title: 'Dialogues',
+    href: '/admin/dialogues',
+    icon: MessageSquare,
+    description: 'Dialogue monitoring and management',
+    badge: 'New'
+  },
+  {
     title: 'Content',
     href: '/admin/content',
     icon: BookOpen,
@@ -58,6 +70,39 @@ const adminNavItems = [
     href: '/admin/analytics',
     icon: BarChart3,
     description: 'Detailed platform analytics'
+  },
+  {
+    title: 'Monitoring',
+    href: '/admin/monitoring',
+    icon: Monitor,
+    description: 'System health and performance',
+    badge: 'New',
+    subItems: [
+      {
+        title: 'Dashboard',
+        href: '/admin/monitoring',
+        icon: Activity,
+        description: 'Real-time system metrics'
+      },
+      {
+        title: 'Logs',
+        href: '/admin/monitoring/logs',
+        icon: FileText,
+        description: 'System and audit logs'
+      },
+      {
+        title: 'Alerts',
+        href: '/admin/monitoring/alerts',
+        icon: Bell,
+        description: 'Alert management'
+      },
+      {
+        title: 'Diagnostics',
+        href: '/admin/monitoring/diagnostics',
+        icon: Stethoscope,
+        description: 'System diagnostics'
+      }
+    ]
   },
   {
     title: 'Settings',
@@ -84,8 +129,8 @@ function AdminLayoutContent({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
-    // Check if user has admin role
-    if (user && user.role !== 'admin' && user.role !== 'moderator') {
+    // Check if user has admin membership (super)
+    if (user && user.membership !== 'super') {
       router.push('/');
     }
   }, [user, router]);
@@ -95,12 +140,8 @@ function AdminLayoutContent({
     router.push('/');
   };
 
-  // Show nothing if not admin/moderator
-  if (user && user.role !== 'admin' && user.role !== 'moderator') {
-    return null;
-  }
-
-  if (!isAuthenticated || (user && user.role !== 'admin' && user.role !== 'moderator')) {
+  // Show nothing if not admin (super membership)
+  if (!user || user.membership !== 'super') {
     return null;
   }
 
@@ -155,7 +196,14 @@ function AdminLayoutContent({
                   >
                     <item.icon className="h-4 w-4" />
                     <div className="flex-1">
-                      <div>{item.title}</div>
+                      <div className="flex items-center gap-2">
+                        <span>{item.title}</span>
+                        {item.badge && (
+                          <Badge variant="default" className="text-xs px-1.5 py-0">
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground hidden xl:block">
                         {item.description}
                       </div>
@@ -196,8 +244,8 @@ function AdminLayoutContent({
             </Button>
 
             <div className="flex items-center gap-2">
-              <Badge variant={user?.role === 'admin' ? 'default' : 'secondary'}>
-                {user?.role?.toUpperCase()}
+              <Badge variant={user?.membership === 'super' ? 'default' : 'secondary'}>
+                {user?.membership === 'super' ? 'ADMIN' : 'USER'}
               </Badge>
               {pathname !== '/admin' && (
                 <>
@@ -237,7 +285,7 @@ function AdminLayoutContent({
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{user?.username}</p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {user?.email}
+                      {user?.membership === 'super' ? '管理员' : '用户'}
                     </p>
                   </div>
                 </DropdownMenuLabel>

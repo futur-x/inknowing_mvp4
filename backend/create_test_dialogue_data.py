@@ -15,10 +15,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config.database import engine, get_db
-from models.user import User
-from models.book import Book
-from models.dialogue import (
+from backend.config.database import engine, get_db
+from backend.models.user import User
+from backend.models.book import Book
+from backend.models.dialogue import (
     DialogueSession,
     DialogueMessage,
     DialogueContext,
@@ -26,7 +26,7 @@ from models.dialogue import (
     DialogueStatus,
     MessageRole
 )
-from core.logger import logger
+from backend.core.logger import logger
 
 
 # Sample dialogue data for different scenarios

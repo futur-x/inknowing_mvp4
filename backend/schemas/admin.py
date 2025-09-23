@@ -7,9 +7,9 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, EmailStr, validator
 
-from models.admin import AdminRole, AdminStatus, AuditActionType
-from models.user import MembershipType, UserStatus
-from models.book import BookType, BookStatus
+from backend.models.admin import AdminRole, AdminStatus, AuditActionType
+from backend.models.user import MembershipType, UserStatus
+from backend.models.book import BookType, BookStatus
 
 
 # ==================== Auth Schemas ====================

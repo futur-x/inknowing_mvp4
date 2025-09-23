@@ -13,7 +13,7 @@ from .base import (
     SubscriptionResult,
     RefundResult
 )
-from models.payment import PaymentStatus
+from backend.models.payment import PaymentStatus
 
 logger = logging.getLogger(__name__)
 

@@ -9,19 +9,19 @@ from sqlalchemy import select, or_
 from loguru import logger
 
 from config import settings
-from core.security import (
+from backend.core.security import (
     create_access_token,
     create_refresh_token,
     verify_token,
     get_password_hash,
     verify_password
 )
-from core.exceptions import (
+from backend.core.exceptions import (
     AuthenticationError,
     ConflictError,
     ValidationError
 )
-from models.user import User, MembershipType
+from backend.models.user import User, MembershipType
 from .user import UserService
 
 

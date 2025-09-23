@@ -10,14 +10,14 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi import HTTPException, status
 
-from models.admin import (
+from backend.models.admin import (
     Admin, AuditLog, AuditActionType, SystemConfig, AIModelConfig
 )
-from models.user import User, MembershipType, UserStatus
-from models.book import Book, BookStatus, BookType
-from models.upload import Upload, UploadStatus
-from models.dialogue import DialogueSession
-from core.logger import logger
+from backend.models.user import User, MembershipType, UserStatus
+from backend.models.book import Book, BookStatus, BookType
+from backend.models.upload import Upload, UploadStatus
+from backend.models.dialogue import DialogueSession
+from backend.core.logger import logger
 
 
 class AdminService:
@@ -143,6 +143,11 @@ class AdminService:
         search: Optional[str] = None,
         membership: Optional[MembershipType] = None,
         status: Optional[str] = None,
+        role: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        registered_from: Optional[datetime] = None,
+        registered_to: Optional[datetime] = None,
         page: int = 1,
         limit: int = 50
     ) -> Dict[str, Any]:
@@ -153,6 +158,11 @@ class AdminService:
             search: Search query for username, phone, email
             membership: Filter by membership type
             status: Filter by user status
+            role: Filter by user role
+            sort_by: Sort field (created_at, last_active, username, dialogue_count)
+            sort_order: Sort order (asc, desc)
+            registered_from: Filter by registration date from
+            registered_to: Filter by registration date to
             page: Page number
             limit: Items per page
 
@@ -170,7 +180,8 @@ class AdminService:
                     or_(
                         User.username.contains(search),
                         User.phone.contains(search),
-                        User.nickname.contains(search)
+                        User.nickname.contains(search),
+                        User.email.contains(search) if hasattr(User, 'email') else False
                     )
                 )
             if membership:
@@ -180,6 +191,14 @@ class AdminService:
                     conditions.append(User.status == UserStatus.ACTIVE)
                 elif status == "suspended":
                     conditions.append(User.status == UserStatus.SUSPENDED)
+                elif status == "banned":
+                    conditions.append(User.status == UserStatus.BANNED)
+
+            # Date range filters
+            if registered_from:
+                conditions.append(User.created_at >= registered_from)
+            if registered_to:
+                conditions.append(User.created_at <= registered_to)
 
             if conditions:
                 stmt = stmt.where(and_(*conditions))
@@ -191,9 +210,27 @@ class AdminService:
             result = await self.db.execute(count_stmt)
             total = result.scalar() or 0
 
+            # Apply sorting
+            order_field = None
+            if sort_by == "created_at":
+                order_field = User.created_at
+            elif sort_by == "last_active" and hasattr(User, 'last_active'):
+                order_field = User.last_active
+            elif sort_by == "username":
+                order_field = User.username
+            # Add dialogue_count sorting later with subquery
+
+            if order_field:
+                if sort_order == "desc":
+                    stmt = stmt.order_by(order_field.desc())
+                else:
+                    stmt = stmt.order_by(order_field.asc())
+            else:
+                stmt = stmt.order_by(User.created_at.desc())
+
             # Apply pagination
             offset = (page - 1) * limit
-            stmt = stmt.offset(offset).limit(limit).order_by(User.created_at.desc())
+            stmt = stmt.offset(offset).limit(limit)
 
             # Execute query
             result = await self.db.execute(stmt)
@@ -648,6 +685,112 @@ class AdminService:
                 detail="Failed to review book"
             )
 
+    async def get_user_stats(self) -> Dict[str, Any]:
+        """Get user statistics"""
+        try:
+            # Total users
+            stmt = select(func.count(User.id))
+            result = await self.db.execute(stmt)
+            total_users = result.scalar() or 0
+
+            # Users by membership
+            stmt = select(
+                User.membership_type,
+                func.count(User.id)
+            ).group_by(User.membership_type)
+            result = await self.db.execute(stmt)
+            membership_stats = {row[0]: row[1] for row in result}
+
+            # Active users (last 30 days)
+            active_since = datetime.utcnow() - timedelta(days=30)
+            stmt = select(func.count(User.id)).where(
+                User.last_active >= active_since
+            )
+            result = await self.db.execute(stmt)
+            active_users = result.scalar() or 0
+
+            return {
+                "total_users": total_users,
+                "active_users": active_users,
+                "membership_breakdown": membership_stats
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting user stats: {e}")
+            return {"total_users": 0, "active_users": 0, "membership_breakdown": {}}
+
+    async def get_book_stats(self) -> Dict[str, Any]:
+        """Get book statistics"""
+        try:
+            # Total books
+            stmt = select(func.count(Book.id))
+            result = await self.db.execute(stmt)
+            total_books = result.scalar() or 0
+
+            # Active books
+            stmt = select(func.count(Book.id)).where(Book.status == BookStatus.ACTIVE)
+            result = await self.db.execute(stmt)
+            active_books = result.scalar() or 0
+
+            # Books by category
+            stmt = select(
+                Book.category,
+                func.count(Book.id)
+            ).where(Book.category.isnot(None)).group_by(Book.category)
+            result = await self.db.execute(stmt)
+            category_stats = {row[0]: row[1] for row in result}
+
+            return {
+                "total_books": total_books,
+                "active_books": active_books,
+                "category_breakdown": category_stats
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting book stats: {e}")
+            return {"total_books": 0, "active_books": 0, "category_breakdown": {}}
+
+    async def get_dialogue_stats_summary(self) -> Dict[str, Any]:
+        """Get dialogue statistics summary"""
+        try:
+            # Total dialogues
+            stmt = select(func.count(DialogueSession.id))
+            result = await self.db.execute(stmt)
+            total_dialogues = result.scalar() or 0
+
+            # Active dialogues
+            stmt = select(func.count(DialogueSession.id)).where(
+                DialogueSession.status == "active"
+            )
+            result = await self.db.execute(stmt)
+            active_dialogues = result.scalar() or 0
+
+            # Average messages per dialogue
+            stmt = text("""
+                SELECT AVG(message_count)
+                FROM (
+                    SELECT session_id, COUNT(*) as message_count
+                    FROM dialogue_messages
+                    GROUP BY session_id
+                ) as counts
+            """)
+            result = await self.db.execute(stmt)
+            avg_messages = result.scalar() or 0
+
+            return {
+                "total_dialogues": total_dialogues,
+                "active_dialogues": active_dialogues,
+                "avg_messages_per_dialogue": round(avg_messages, 2)
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting dialogue stats: {e}")
+            return {
+                "total_dialogues": 0,
+                "active_dialogues": 0,
+                "avg_messages_per_dialogue": 0
+            }
+
     # AI Model Management Methods
     async def get_model_config(self) -> Dict[str, Any]:
         """
@@ -873,3 +1016,393 @@ class AdminService:
             success=True
         )
         self.db.add(audit_log)
+
+    async def delete_user(self, admin: Admin, user_id: str):
+        """Delete user account"""
+        try:
+            # Get user
+            stmt = select(User).where(User.id == user_id)
+            result = await self.db.execute(stmt)
+            user = result.scalar_one_or_none()
+
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+
+            # Create audit log
+            await self._create_audit_log(
+                admin_id=admin.id,
+                action=AuditActionType.USER_DELETE,
+                entity_type="user",
+                entity_id=user_id,
+                description=f"Deleted user {user.username}"
+            )
+
+            # Delete user
+            await self.db.delete(user)
+            await self.db.commit()
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Delete user error: {e}")
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete user"
+            )
+
+    async def change_user_status(
+        self, admin: Admin, user_id: str, new_status: UserStatus,
+        reason: str = "", duration: Optional[int] = None
+    ):
+        """Change user status"""
+        try:
+            stmt = select(User).where(User.id == user_id)
+            result = await self.db.execute(stmt)
+            user = result.scalar_one_or_none()
+
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+
+            old_status = user.status
+            user.status = new_status
+
+            # If temporary suspension, set expiry
+            if duration and new_status == UserStatus.SUSPENDED:
+                if hasattr(user, 'suspension_expires'):
+                    user.suspension_expires = datetime.utcnow() + timedelta(days=duration)
+
+            # Create audit log
+            await self._create_audit_log(
+                admin_id=admin.id,
+                action=AuditActionType.USER_STATUS_CHANGE,
+                entity_type="user",
+                entity_id=user_id,
+                description=f"Changed user {user.username} status from {old_status} to {new_status}. Reason: {reason}",
+                old_values={"status": str(old_status)},
+                new_values={"status": str(new_status), "reason": reason}
+            )
+
+            await self.db.commit()
+            await self.db.refresh(user)
+
+            return await self.get_user_details(user_id)
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Change user status error: {e}")
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to change user status"
+            )
+
+    async def reset_user_password(self, admin: Admin, user_id: str):
+        """Reset user password"""
+        try:
+            stmt = select(User).where(User.id == user_id)
+            result = await self.db.execute(stmt)
+            user = result.scalar_one_or_none()
+
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+
+            # Generate temporary password
+            import secrets
+            import string
+            alphabet = string.ascii_letters + string.digits
+            temp_password = ''.join(secrets.choice(alphabet) for i in range(12))
+
+            # Hash and set new password
+            from passlib.context import CryptContext
+            pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+            user.password_hash = pwd_context.hash(temp_password)
+
+            # Create audit log
+            await self._create_audit_log(
+                admin_id=admin.id,
+                action=AuditActionType.PASSWORD_RESET,
+                entity_type="user",
+                entity_id=user_id,
+                description=f"Reset password for user {user.username}"
+            )
+
+            await self.db.commit()
+
+            # Return temporary password (should be sent via email in production)
+            return {
+                "message": "Password reset successfully",
+                "temporary_password": temp_password,
+                "user_id": user_id
+            }
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Reset password error: {e}")
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to reset password"
+            )
+
+    async def get_user_activities(
+        self, user_id: str, activity_type: Optional[str] = None, limit: int = 50
+    ):
+        """Get user activity history"""
+        try:
+            activities = []
+
+            # Get dialogue sessions
+            if not activity_type or activity_type == "dialogues":
+                stmt = select(DialogueSession).where(
+                    DialogueSession.user_id == user_id
+                ).order_by(DialogueSession.created_at.desc()).limit(limit)
+                result = await self.db.execute(stmt)
+                sessions = result.scalars().all()
+
+                for session in sessions:
+                    activities.append({
+                        "type": "dialogue",
+                        "timestamp": session.created_at.isoformat(),
+                        "details": {
+                            "session_id": str(session.id),
+                            "book_id": str(session.book_id),
+                            "duration": session.duration if hasattr(session, 'duration') else None
+                        }
+                    })
+
+            # Get uploads
+            if not activity_type or activity_type == "uploads":
+                stmt = select(Upload).where(
+                    Upload.user_id == user_id
+                ).order_by(Upload.created_at.desc()).limit(limit)
+                result = await self.db.execute(stmt)
+                uploads = result.scalars().all()
+
+                for upload in uploads:
+                    activities.append({
+                        "type": "upload",
+                        "timestamp": upload.created_at.isoformat(),
+                        "details": {
+                            "upload_id": str(upload.id),
+                            "filename": upload.filename,
+                            "status": upload.status
+                        }
+                    })
+
+            # Sort by timestamp
+            activities.sort(key=lambda x: x["timestamp"], reverse=True)
+
+            return {
+                "activities": activities[:limit],
+                "total": len(activities)
+            }
+
+        except Exception as e:
+            logger.error(f"Get user activities error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to get user activities"
+            )
+
+    async def batch_user_operation(
+        self, admin: Admin, user_ids: List[str], operation: str, params: Dict[str, Any]
+    ):
+        """Perform batch operations on multiple users"""
+        try:
+            successful = []
+            failed = []
+
+            for user_id in user_ids:
+                try:
+                    if operation == "suspend":
+                        await self.change_user_status(
+                            admin, user_id, UserStatus.SUSPENDED,
+                            params.get("reason", "Batch suspension"),
+                            params.get("duration")
+                        )
+                        successful.append(user_id)
+                    elif operation == "ban":
+                        await self.change_user_status(
+                            admin, user_id, UserStatus.BANNED,
+                            params.get("reason", "Batch ban")
+                        )
+                        successful.append(user_id)
+                    elif operation == "delete":
+                        await self.delete_user(admin, user_id)
+                        successful.append(user_id)
+                    elif operation == "change_membership":
+                        await self.update_user(
+                            admin, user_id,
+                            membership=MembershipType(params.get("membership"))
+                        )
+                        successful.append(user_id)
+                    else:
+                        failed.append({"user_id": user_id, "error": "Unknown operation"})
+                except Exception as e:
+                    failed.append({"user_id": user_id, "error": str(e)})
+
+            return {
+                "successful": successful,
+                "failed": failed,
+                "total": len(user_ids),
+                "success_count": len(successful),
+                "failure_count": len(failed)
+            }
+
+        except Exception as e:
+            logger.error(f"Batch operation error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to perform batch operation"
+            )
+
+    async def export_users(self, admin: Admin, format: str, filters: Dict[str, Any]):
+        """Export user data"""
+        try:
+            # Get users with filters
+            users_data = await self.list_users(**filters, limit=10000)
+            users = users_data["users"]
+
+            # Create export file
+            import csv
+            import io
+            import os
+
+            if format == "csv":
+                output = io.StringIO()
+                writer = csv.DictWriter(output, fieldnames=[
+                    "id", "username", "phone", "email", "membership_type",
+                    "status", "created_at", "last_active", "total_dialogues"
+                ])
+                writer.writeheader()
+                writer.writerows(users)
+
+                # Save to file
+                filename = f"users_export_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+                filepath = f"/tmp/{filename}"
+                with open(filepath, 'w') as f:
+                    f.write(output.getvalue())
+
+                # Create audit log
+                await self._create_audit_log(
+                    admin_id=admin.id,
+                    action=AuditActionType.DATA_EXPORT,
+                    description=f"Exported {len(users)} users to {format}"
+                )
+
+                return filepath
+
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Unsupported export format"
+                )
+
+        except Exception as e:
+            logger.error(f"Export users error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to export users"
+            )
+
+    async def get_user_points(self, user_id: str):
+        """Get user points/credits information"""
+        try:
+            stmt = select(User).where(User.id == user_id)
+            result = await self.db.execute(stmt)
+            user = result.scalar_one_or_none()
+
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+
+            # Get points balance (simplified - should query actual points table)
+            return {
+                "user_id": user_id,
+                "balance": getattr(user, 'points_balance', 0),
+                "total_earned": getattr(user, 'points_earned', 0),
+                "total_spent": getattr(user, 'points_spent', 0),
+                "last_transaction": None
+            }
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Get user points error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to get user points"
+            )
+
+    async def adjust_user_points(
+        self, admin: Admin, user_id: str, amount: int, operation: str, reason: str
+    ):
+        """Adjust user points balance"""
+        try:
+            stmt = select(User).where(User.id == user_id)
+            result = await self.db.execute(stmt)
+            user = result.scalar_one_or_none()
+
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+
+            old_balance = getattr(user, 'points_balance', 0)
+
+            if operation == "add":
+                new_balance = old_balance + amount
+            elif operation == "set":
+                new_balance = amount
+            else:
+                new_balance = max(0, old_balance - amount)
+
+            # Update balance (simplified - should create transaction record)
+            if hasattr(user, 'points_balance'):
+                user.points_balance = new_balance
+
+            # Create audit log
+            await self._create_audit_log(
+                admin_id=admin.id,
+                action=AuditActionType.POINTS_ADJUSTMENT,
+                entity_type="user",
+                entity_id=user_id,
+                description=f"Adjusted points for user {user.username}: {reason}",
+                old_values={"balance": old_balance},
+                new_values={"balance": new_balance, "adjustment": amount}
+            )
+
+            await self.db.commit()
+
+            return {
+                "user_id": user_id,
+                "old_balance": old_balance,
+                "new_balance": new_balance,
+                "adjustment": amount,
+                "reason": reason
+            }
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Adjust user points error: {e}")
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to adjust user points"
+            )

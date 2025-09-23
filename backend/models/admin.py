@@ -38,6 +38,10 @@ class AuditActionType(str, Enum):
     USER_SUSPEND = "user_suspend"
     USER_UNSUSPEND = "user_unsuspend"
     USER_MEMBERSHIP_CHANGE = "user_membership_change"
+    USER_STATUS_CHANGE = "user_status_change"
+    PASSWORD_RESET = "password_reset"
+    POINTS_ADJUSTMENT = "points_adjustment"
+    DATA_EXPORT = "data_export"
 
     # Book management
     BOOK_CREATE = "book_create"

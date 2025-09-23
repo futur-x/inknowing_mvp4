@@ -3,9 +3,9 @@ Check and create test user if needed
 """
 import asyncio
 from sqlalchemy import select
-from config.database import get_db
-from models.user import User
-from core.security import get_password_hash
+from backend.config.database import get_db
+from backend.models.user import User
+from backend.core.security import get_password_hash
 from datetime import datetime
 import uuid
 

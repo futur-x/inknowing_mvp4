@@ -5,8 +5,8 @@ Debug script for dialogue creation issues
 import asyncio
 import json
 from sqlalchemy import text
-from config.database import engine, get_db
-from models.dialogue import DialogueSession, DialogueMessage
+from backend.config.database import engine, get_db
+from backend.models.dialogue import DialogueSession, DialogueMessage
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 

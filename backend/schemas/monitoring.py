@@ -7,7 +7,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-from models.monitoring import AlertSeverity, AlertType, AlertStatus
+from backend.models.monitoring import AlertSeverity, AlertType, AlertStatus
 
 
 # ==================== Real-time Metrics Schemas ====================

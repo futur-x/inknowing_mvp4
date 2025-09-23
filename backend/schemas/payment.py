@@ -9,7 +9,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, validator
 
-from models.payment import (
+from backend.models.payment import (
     PaymentStatus,
     PaymentMethod,
     PaymentType,

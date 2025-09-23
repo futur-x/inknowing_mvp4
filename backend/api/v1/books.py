@@ -5,9 +5,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config.database import get_db
-from services.book import BookService
-from schemas.book import (
+from backend.config.database import get_db
+from backend.services.book import BookService
+from backend.schemas.book import (
     Book,
     BookDetail,
     BookList,
@@ -17,7 +17,7 @@ from schemas.book import (
     PeriodEnum,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["Books"])
 
 
 @router.get("/books", response_model=BookList)

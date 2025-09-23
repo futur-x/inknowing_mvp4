@@ -187,3 +187,172 @@ class ApiHealthCheck(SQLModel, table=True):
 
     class Config:
         arbitrary_types_allowed = True
+
+
+class LogLevel(str, Enum):
+    """Log severity levels"""
+    DEBUG = "debug"
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    CRITICAL = "critical"
+
+
+class SystemLog(SQLModel, table=True):
+    """System logs for application events"""
+    __tablename__ = "system_logs"
+
+    id: str = Field(
+        default_factory=lambda: str(uuid4()),
+        primary_key=True,
+        description="Log UUID"
+    )
+    level: LogLevel = Field(
+        index=True,
+        description="Log level"
+    )
+    message: str = Field(
+        description="Log message"
+    )
+    source: str = Field(
+        max_length=100,
+        index=True,
+        description="Log source module"
+    )
+    user_id: Optional[str] = Field(
+        default=None,
+        index=True,
+        description="Associated user ID if applicable"
+    )
+    request_id: Optional[str] = Field(
+        default=None,
+        index=True,
+        description="Request ID for tracing"
+    )
+    log_metadata: Optional[Dict[str, Any]] = Field(
+        default=None,
+        sa_column=Column(JSON),
+        description="Additional log metadata"
+    )
+    stack_trace: Optional[str] = Field(
+        default=None,
+        description="Stack trace for errors"
+    )
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        index=True,
+        description="Log creation timestamp"
+    )
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class AlertRule(SQLModel, table=True):
+    """Alert rules configuration"""
+    __tablename__ = "alert_rules"
+
+    id: str = Field(
+        default_factory=lambda: str(uuid4()),
+        primary_key=True,
+        description="Rule UUID"
+    )
+    name: str = Field(
+        unique=True,
+        max_length=100,
+        description="Rule name"
+    )
+    description: str = Field(
+        max_length=500,
+        description="Rule description"
+    )
+    metric_name: str = Field(
+        max_length=100,
+        description="Metric to monitor"
+    )
+    condition: str = Field(
+        max_length=50,
+        description="Condition (greater_than, less_than, equals)"
+    )
+    threshold: float = Field(
+        description="Threshold value"
+    )
+    duration: int = Field(
+        default=60,
+        description="Duration in seconds before triggering"
+    )
+    severity: AlertSeverity = Field(
+        description="Alert severity when triggered"
+    )
+    enabled: bool = Field(
+        default=True,
+        index=True,
+        description="Rule enabled status"
+    )
+    notification_channels: Optional[Dict[str, Any]] = Field(
+        default=None,
+        sa_column=Column(JSON),
+        description="Notification configuration"
+    )
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        description="Rule creation time"
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        description="Rule last update time"
+    )
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class MonitoringAuditLog(SQLModel, table=True):
+    """Audit log for tracking monitoring actions"""
+    __tablename__ = "monitoring_audit_logs"
+
+    id: str = Field(
+        default_factory=lambda: str(uuid4()),
+        primary_key=True,
+        description="Audit log UUID"
+    )
+    admin_id: str = Field(
+        index=True,
+        description="Admin user ID"
+    )
+    action: str = Field(
+        max_length=100,
+        index=True,
+        description="Action performed"
+    )
+    resource_type: str = Field(
+        max_length=50,
+        description="Resource type affected"
+    )
+    resource_id: Optional[str] = Field(
+        default=None,
+        description="Resource ID affected"
+    )
+    changes: Optional[Dict[str, Any]] = Field(
+        default=None,
+        sa_column=Column(JSON),
+        description="Changes made"
+    )
+    ip_address: Optional[str] = Field(
+        default=None,
+        max_length=45,
+        description="Client IP address"
+    )
+    user_agent: Optional[str] = Field(
+        default=None,
+        max_length=500,
+        description="User agent string"
+    )
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        index=True,
+        description="Action timestamp"
+    )
+
+    class Config:
+        arbitrary_types_allowed = True

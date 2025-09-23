@@ -9,7 +9,7 @@ from sqlalchemy import select, and_, or_, desc
 from sqlalchemy.orm import selectinload
 import logging
 
-from models.payment import (
+from backend.models.payment import (
     Payment,
     Subscription,
     UserPaymentMethod,
@@ -19,8 +19,8 @@ from models.payment import (
     PaymentType,
     SubscriptionStatus
 )
-from models.user import User, MembershipType
-from schemas.payment import (
+from backend.models.user import User, MembershipType
+from backend.schemas.payment import (
     CreatePaymentRequest,
     CreateSubscriptionRequest,
     UpdateSubscriptionRequest,
@@ -35,14 +35,14 @@ from schemas.payment import (
     BillingCycle,
     MembershipPlan
 )
-from utils.payment_gateways import (
+from backend.utils.payment_gateways import (
     PaymentGateway,
     StripeGateway,
     AlipayGateway,
     WeChatPayGateway
 )
-from config.settings import settings
-from core.exceptions import (
+from backend.config.settings import settings
+from backend.core.exceptions import (
     BadRequestException,
     NotFoundException,
     ConflictException,
