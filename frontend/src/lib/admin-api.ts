@@ -480,18 +480,45 @@ class AdminAPI {
 
   // WebSocket for real-time monitoring
   connectMonitoring(onUpdate: (data: any) => void): WebSocket {
-    const ws = new WebSocket(`${process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8888'}/admin/monitor`);
+    const wsUrl = `${process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8888'}/admin/monitor`;
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      onUpdate(data);
-    };
+    try {
+      const ws = new WebSocket(wsUrl);
 
-    ws.onerror = (error) => {
-      console.error('Admin WebSocket error:', error);
-    };
+      ws.onopen = () => {
+        console.log('Admin WebSocket connected');
+        onUpdate({ type: 'connection_status', connected: true });
+      };
 
-    return ws;
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          onUpdate(data);
+        } catch (err) {
+          console.error('Failed to parse WebSocket message:', err);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('Admin WebSocket error:', error);
+        onUpdate({ type: 'connection_status', connected: false });
+      };
+
+      ws.onclose = () => {
+        console.log('Admin WebSocket disconnected');
+        onUpdate({ type: 'connection_status', connected: false });
+      };
+
+      return ws;
+    } catch (error) {
+      console.error('Failed to create WebSocket connection:', error);
+      // Return a mock WebSocket object to prevent errors
+      return {
+        close: () => {},
+        send: () => {},
+        readyState: WebSocket.CLOSED
+      } as any;
+    }
   }
 }
 

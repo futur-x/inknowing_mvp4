@@ -26,6 +26,40 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
+// Default stats to prevent runtime errors
+const getDefaultStats = (): PlatformStats => ({
+  users: {
+    total: 0,
+    active: 0,
+    new: 0,
+    growth: 0
+  },
+  books: {
+    total: 0,
+    approved: 0,
+    pending: 0,
+    rejected: 0
+  },
+  dialogues: {
+    total: 0,
+    active: 0,
+    today: 0,
+    avgDuration: 0
+  },
+  revenue: {
+    mrr: 0,
+    totalRevenue: 0,
+    paidUsers: 0,
+    conversionRate: 0
+  },
+  system: {
+    status: 'operational' as const,
+    apiLatency: 0,
+    wsConnections: 0,
+    dbStatus: 'healthy'
+  }
+});
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,6 +106,8 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error('Failed to fetch admin stats:', err);
       setError('Failed to load dashboard statistics');
+      // Set default stats to prevent runtime errors
+      setStats(getDefaultStats());
     } finally {
       setLoading(false);
     }
@@ -127,7 +163,15 @@ export default function AdminDashboard() {
   }
 
   if (!stats) {
-    return null;
+    // This should not happen anymore, but as a safety check
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          <p className="text-muted-foreground">Initializing dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -181,7 +225,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Critical Alerts */}
-      {stats.system.status !== 'operational' && (
+      {stats?.system?.status && stats.system.status !== 'operational' && (
         <Alert variant={stats.system.status === 'degraded' ? 'default' : 'destructive'}>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>System Status: {stats.system.status}</AlertTitle>

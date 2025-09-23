@@ -23,6 +23,27 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ stats }: StatsCardsProps) {
+  // Safety check to prevent runtime errors
+  if (!stats || !stats.users || !stats.books || !stats.dialogues || !stats.revenue) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className="animate-pulse">
+            <CardHeader className="pb-2">
+              <div className="h-4 w-24 bg-gray-200 rounded" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="h-8 w-32 bg-gray-200 rounded" />
+                <div className="h-4 w-20 bg-gray-100 rounded" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
   const cards = [
     {
       title: 'Total Users',
@@ -40,7 +61,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
     {
       title: 'Total Books',
       value: stats.books.total.toLocaleString(),
-      change: ((stats.books.approved / stats.books.total) * 100).toFixed(1),
+      change: stats.books.total > 0 ? ((stats.books.approved / stats.books.total) * 100).toFixed(1) : '0',
       changeLabel: 'approval rate',
       icon: BookOpen,
       color: 'text-green-600',
