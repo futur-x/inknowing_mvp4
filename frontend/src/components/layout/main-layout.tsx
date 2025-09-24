@@ -17,7 +17,7 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname()
-  const { isAuthenticated, refreshAuth, checkAuth, token } = useAuthStore()
+  const { isAuthenticated, isAdmin, refreshAuth, checkAuth, token } = useAuthStore()
   const { fetchMembership, fetchQuota } = useUserStore()
 
   // Initialize auth state on mount
@@ -25,8 +25,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
     // Check if we have a stored token and validate it
     if (token && !isAuthenticated) {
       checkAuth().catch(console.error)
-    } else if (isAuthenticated) {
-      // Load user membership and quota for authenticated users
+    } else if (isAuthenticated && !isAdmin) {
+      // Load user membership and quota for regular authenticated users only
+      // Admin users don't have membership/quota
       fetchMembership().catch(console.error)
       fetchQuota().catch(console.error)
     }
@@ -34,16 +35,17 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   // Handle auth state changes
   useEffect(() => {
-    if (isAuthenticated) {
-      // Load user membership and quota when authentication status changes
+    if (isAuthenticated && !isAdmin) {
+      // Load user membership and quota only for regular users
+      // Admin users don't need these endpoints
       fetchMembership().catch(console.error)
       fetchQuota().catch(console.error)
     }
-  }, [isAuthenticated, fetchMembership, fetchQuota])
+  }, [isAuthenticated, isAdmin, fetchMembership, fetchQuota])
 
-  // Auto-refresh quota periodically for authenticated users
+  // Auto-refresh quota periodically for authenticated regular users
   useEffect(() => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated || isAdmin) return
 
     const refreshQuota = () => {
       fetchQuota().catch(console.error)
@@ -53,7 +55,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     const interval = setInterval(refreshQuota, 5 * 60 * 1000)
 
     return () => clearInterval(interval)
-  }, [isAuthenticated, fetchQuota])
+  }, [isAuthenticated, isAdmin, fetchQuota])
 
   // Determine if footer should be shown
   const hideFooter = [

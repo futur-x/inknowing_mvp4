@@ -125,23 +125,23 @@ function AdminLayoutContent({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user } = useAuthStore();
+  const { user, isAdmin } = useAuthStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
-    // Check if user has admin membership (super)
-    if (user && user.membership !== 'super') {
+    // Check if user is admin
+    if (!isAdmin) {
       router.push('/');
     }
-  }, [user, router]);
+  }, [isAdmin, router]);
 
   const handleLogout = () => {
     useAuthStore.getState().logout();
     router.push('/');
   };
 
-  // Show nothing if not admin (super membership)
-  if (!user || user.membership !== 'super') {
+  // Show nothing if not admin
+  if (!isAdmin) {
     return null;
   }
 
@@ -244,8 +244,8 @@ function AdminLayoutContent({
             </Button>
 
             <div className="flex items-center gap-2">
-              <Badge variant={user?.membership === 'super' ? 'default' : 'secondary'}>
-                {user?.membership === 'super' ? 'ADMIN' : 'USER'}
+              <Badge variant="default">
+                ADMIN
               </Badge>
               {pathname !== '/admin' && (
                 <>
@@ -285,7 +285,7 @@ function AdminLayoutContent({
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{user?.username}</p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {user?.membership === 'super' ? '管理员' : '用户'}
+                      管理员
                     </p>
                   </div>
                 </DropdownMenuLabel>

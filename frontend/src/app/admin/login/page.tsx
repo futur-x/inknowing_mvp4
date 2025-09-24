@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Shield, Loader2, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
-import { apiClient } from '@/lib/api';
+import { api } from '@/lib/api';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -17,7 +17,7 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    phone: '',
+    username: '',
     password: ''
   });
 
@@ -29,31 +29,42 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      // Login with phone and password
-      const response = await apiClient.post('/auth/login', {
-        type: 'phone',  // Required field for backend schema validation
-        phone: formData.phone,
+      // Login with admin username and password
+      const response = await api.admin.auth.login({
+        username: formData.username,
         password: formData.password
       });
 
-      if (response && response.user) {
-        // Store auth data - pass the entire response object
-        useAuthStore.getState().setAuth(response);
+      if (response) {
+        // Store admin auth data with isAdmin flag
+        // Note: Admin endpoint returns the admin data directly, not nested
+        const adminUser = response.user || response.admin || {
+          id: response.id,
+          username: formData.username,
+          membership: 'super',
+          role: 'admin'
+        };
 
-        // Check if user has super membership (admin)
-        if (response.user.membership === 'super') {
-          // Redirect to admin panel
-          router.push(redirect);
-        } else {
-          setError('You do not have admin privileges. Please contact the system administrator.');
-        }
+        useAuthStore.getState().setAdminAuth({
+          user: adminUser,
+          access_token: response.access_token,
+          refresh_token: response.refresh_token,
+          ws_token: response.ws_token,
+          token_type: response.token_type || 'Bearer',
+          isAdmin: true
+        });
+
+        // Redirect to admin panel
+        router.push(redirect);
       }
     } catch (err: any) {
       console.error('Admin login error:', err);
       if (err.response?.status === 401) {
-        setError('Invalid phone number or password');
+        setError('Invalid username or password');
       } else if (err.response?.data?.detail) {
         setError(err.response.data.detail);
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
       } else {
         setError('Login failed. Please try again.');
       }
@@ -89,15 +100,15 @@ export default function AdminLoginPage() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-slate-200">
-                  Phone Number
+                <Label htmlFor="username" className="text-slate-200">
+                  Username
                 </Label>
                 <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="13800000001"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  id="username"
+                  type="text"
+                  placeholder="admin"
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   disabled={loading}
                   required
                   className="bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500"
@@ -152,7 +163,7 @@ export default function AdminLoginPage() {
             {process.env.NODE_ENV === 'development' && (
               <Alert className="mt-4 bg-slate-700/50 border-slate-600">
                 <AlertDescription className="text-xs text-slate-400">
-                  <strong>Dev Mode:</strong> Use phone: 13800000001, password: Admin@123456
+                  <strong>Dev Mode:</strong> Username: admin, Password: admin123
                 </AlertDescription>
               </Alert>
             )}

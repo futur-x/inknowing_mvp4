@@ -13,6 +13,7 @@ interface AuthState {
   token: string | null
   refreshToken: string | null
   isAuthenticated: boolean
+  isAdmin: boolean
   isLoading: boolean
   isHydrated: boolean
   error: string | null
@@ -30,6 +31,7 @@ interface AuthState {
 
   // Internal actions
   setAuth: (authData: AuthResponse) => void
+  setAdminAuth: (authData: AuthResponse & { isAdmin: boolean }) => void
   clearAuth: () => void
 }
 
@@ -40,6 +42,7 @@ export const useAuthStore = create<AuthState>(
       token: null,
       refreshToken: null,
       isAuthenticated: false,
+      isAdmin: false,
       isLoading: false,
       isHydrated: false,
       error: null,
@@ -145,6 +148,7 @@ export const useAuthStore = create<AuthState>(
       checkAuth: async () => {
         // Check if we have a valid token and get user profile
         const token = AuthStorage.getAccessToken()
+        const isAdmin = AuthStorage.getIsAdmin()
 
         if (!token) {
           get().clearAuth()
@@ -153,14 +157,30 @@ export const useAuthStore = create<AuthState>(
 
         try {
           set({ isLoading: true })
-          // Try to get user profile with Bearer token
-          const user = await api.users.getProfile()
-          set({
-            user,
-            token,
-            isAuthenticated: true,
-            isLoading: false
-          })
+
+          // For admin users, we don't need to check profile
+          // Admin token validation happens on protected routes
+          if (isAdmin) {
+            // Admin user - token is valid as long as it exists
+            // Actual validation happens when accessing admin resources
+            set({
+              user: AuthStorage.getUser(), // Get stored user info
+              token,
+              isAuthenticated: true,
+              isAdmin: true,
+              isLoading: false
+            })
+          } else {
+            // Regular user - check profile endpoint
+            const user = await api.users.getProfile()
+            set({
+              user,
+              token,
+              isAuthenticated: true,
+              isAdmin: false,
+              isLoading: false
+            })
+          }
         } catch (error) {
           console.error('Auth check failed:', error)
           // Token might be invalid
@@ -205,6 +225,30 @@ export const useAuthStore = create<AuthState>(
           token: authData.access_token,
           refreshToken: authData.refresh_token,
           isAuthenticated: true,
+          isAdmin: false,
+          isLoading: false,
+          error: null,
+        })
+      },
+
+      setAdminAuth: (authData: AuthResponse & { isAdmin: boolean }) => {
+        // Store tokens in localStorage using AuthStorage
+        AuthStorage.setTokens({
+          access_token: authData.access_token,
+          refresh_token: authData.refresh_token,
+          ws_token: authData.ws_token,
+        })
+
+        // Store admin flag and user info
+        AuthStorage.setIsAdmin(true)
+        AuthStorage.setUser(authData.user)
+
+        set({
+          user: authData.user,
+          token: authData.access_token,
+          refreshToken: authData.refresh_token,
+          isAuthenticated: true,
+          isAdmin: true,
           isLoading: false,
           error: null,
         })
@@ -213,12 +257,15 @@ export const useAuthStore = create<AuthState>(
       clearAuth: () => {
         // Clear tokens from localStorage
         AuthStorage.clearTokens()
+        AuthStorage.setIsAdmin(false)
+        AuthStorage.setUser(null)
 
         set({
           user: null,
           token: null,
           refreshToken: null,
           isAuthenticated: false,
+          isAdmin: false,
           isLoading: false,
           error: null,
         })

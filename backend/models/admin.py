@@ -8,6 +8,8 @@ from uuid import uuid4
 
 from sqlmodel import Field, SQLModel, Relationship, Column, JSON
 from sqlalchemy.sql import func
+from sqlalchemy import String
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
 
 class AdminRole(str, Enum):
@@ -16,12 +18,28 @@ class AdminRole(str, Enum):
     ADMIN = "admin"
     MODERATOR = "moderator"
 
+    @classmethod
+    def _missing_(cls, value):
+        """Handle case-insensitive enum lookup"""
+        for member in cls:
+            if member.value.lower() == value.lower():
+                return member
+        return None
+
 
 class AdminStatus(str, Enum):
     """Admin account status"""
     ACTIVE = "active"
     INACTIVE = "inactive"
     SUSPENDED = "suspended"
+
+    @classmethod
+    def _missing_(cls, value):
+        """Handle case-insensitive enum lookup"""
+        for member in cls:
+            if member.value.lower() == value.lower():
+                return member
+        return None
 
 
 class AuditActionType(str, Enum):
@@ -71,8 +89,8 @@ class Admin(SQLModel, table=True):
 
     id: str = Field(
         default_factory=lambda: str(uuid4()),
-        primary_key=True,
-        description="Admin UUID"
+        description="Admin UUID",
+        sa_column=Column(PGUUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
     )
     username: str = Field(
         unique=True,
@@ -87,13 +105,15 @@ class Admin(SQLModel, table=True):
         description="Admin email"
     )
     password_hash: str = Field(description="Hashed password")
-    role: AdminRole = Field(
-        default=AdminRole.MODERATOR,
-        description="Admin role"
+    role: str = Field(
+        default=AdminRole.MODERATOR.value,
+        description="Admin role",
+        sa_column=Column(String(50))
     )
-    status: AdminStatus = Field(
-        default=AdminStatus.ACTIVE,
-        description="Account status"
+    status: str = Field(
+        default=AdminStatus.ACTIVE.value,
+        description="Account status",
+        sa_column=Column(String(20))
     )
     permissions: List[str] = Field(
         default_factory=list,
@@ -120,7 +140,10 @@ class Admin(SQLModel, table=True):
         default_factory=datetime.utcnow,
         sa_column_kwargs={"onupdate": func.now()}
     )
-    created_by: Optional[str] = Field(default=None, foreign_key="auth.admins.id")
+    created_by: Optional[str] = Field(
+        default=None,
+        sa_column=Column(PGUUID(as_uuid=False), nullable=True)
+    )
 
     # Relationships - commented out to avoid initialization issues
     # audit_logs: List["AuditLog"] = Relationship(back_populates="admin")
@@ -128,7 +151,7 @@ class Admin(SQLModel, table=True):
     def has_permission(self, permission: str) -> bool:
         """Check if admin has specific permission"""
         # Super admin has all permissions
-        if self.role == AdminRole.SUPER_ADMIN:
+        if self.role == AdminRole.SUPER_ADMIN.value:
             return True
 
         # Check role-based permissions
@@ -141,9 +164,9 @@ class Admin(SQLModel, table=True):
 
     def get_role_permissions(self) -> List[str]:
         """Get permissions based on role"""
-        if self.role == AdminRole.SUPER_ADMIN:
+        if self.role == AdminRole.SUPER_ADMIN.value:
             return ["*"]  # All permissions
-        elif self.role == AdminRole.ADMIN:
+        elif self.role == AdminRole.ADMIN.value:
             return [
                 "users:read", "users:write",
                 "books:read", "books:write",
@@ -151,7 +174,7 @@ class Admin(SQLModel, table=True):
                 "statistics:read",
                 "config:read"
             ]
-        elif self.role == AdminRole.MODERATOR:
+        elif self.role == AdminRole.MODERATOR.value:
             return [
                 "users:read",
                 "books:read", "books:write",
@@ -167,9 +190,9 @@ class AdminToken(SQLModel, table=True):
 
     id: str = Field(
         default_factory=lambda: str(uuid4()),
-        primary_key=True
+        sa_column=Column(PGUUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
     )
-    admin_id: str = Field(foreign_key="auth.admins.id", index=True)
+    admin_id: str = Field(sa_column=Column(PGUUID(as_uuid=False), index=True))
     token: str = Field(unique=True, index=True)
     refresh_token: Optional[str] = Field(unique=True, index=True)
     expires_at: datetime = Field()
@@ -190,10 +213,10 @@ class AuditLog(SQLModel, table=True):
 
     id: str = Field(
         default_factory=lambda: str(uuid4()),
-        primary_key=True
+        sa_column=Column(PGUUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
     )
-    admin_id: str = Field(foreign_key="auth.admins.id", index=True)
-    action: AuditActionType = Field(index=True)
+    admin_id: str = Field(sa_column=Column(PGUUID(as_uuid=False), index=True))
+    action: str = Field(sa_column=Column(String(50), index=True))
     entity_type: Optional[str] = Field(
         default=None,
         index=True,
@@ -245,7 +268,7 @@ class SystemConfig(SQLModel, table=True):
 
     id: str = Field(
         default_factory=lambda: str(uuid4()),
-        primary_key=True
+        sa_column=Column(PGUUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
     )
     key: str = Field(unique=True, index=True, max_length=100)
     value: Dict[str, Any] = Field(sa_column=Column(JSON))
@@ -271,7 +294,7 @@ class AIModelConfig(SQLModel, table=True):
 
     id: str = Field(
         default_factory=lambda: str(uuid4()),
-        primary_key=True
+        sa_column=Column(PGUUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
     )
     name: str = Field(unique=True, index=True)
     provider: str = Field(index=True)  # openai, anthropic, qwen, etc.

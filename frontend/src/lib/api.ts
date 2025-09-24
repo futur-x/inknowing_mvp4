@@ -470,6 +470,35 @@ export const api = {
     getOrderStatus: (orderId: string) => apiClient.get(`payment/orders/${orderId}`),
   },
 
+  // Admin - Business Logic: Admin Management Functions
+  admin: {
+    auth: {
+      login: (credentials: { username: string; password: string }) =>
+        apiClient.post('admin/login', credentials, false),
+      logout: () => apiClient.post('admin/auth/logout'),
+      refresh: (data: any) => apiClient.post('admin/auth/refresh', data),
+    },
+    dashboard: {
+      getStats: () => apiClient.get('admin/dashboard/stats'),
+    },
+    users: {
+      list: (params?: any) => {
+        const queryParams = new URLSearchParams()
+        if (params) {
+          Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined) {
+              queryParams.set(key, value.toString())
+            }
+          })
+        }
+        const queryString = queryParams.toString()
+        return apiClient.get(`admin/users${queryString ? `?${queryString}` : ''}`)
+      },
+      getById: (id: string) => apiClient.get(`admin/users/${id}`),
+      update: (id: string, data: any) => apiClient.patch(`admin/users/${id}`, data),
+    },
+  },
+
   // WebSocket Connection Helper
   createWebSocketUrl: (sessionId: string, token?: string) => {
     const wsBaseUrl = typeof window !== 'undefined'

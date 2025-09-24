@@ -144,7 +144,7 @@ def require_super_admin():
         if hasattr(admin, 'membership') and admin.membership == MembershipType.SUPER:
             return admin
         # If it's an Admin, check role
-        if hasattr(admin, 'role') and admin.role != AdminRole.SUPER_ADMIN:
+        if hasattr(admin, 'role') and admin.role != AdminRole.SUPER_ADMIN.value:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Super admin access required"

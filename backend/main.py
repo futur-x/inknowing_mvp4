@@ -7,11 +7,14 @@ from typing import Dict, Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from backend.config.settings import settings
 from backend.config.database import init_db, close_db
 from backend.api.v1 import api_router
+from backend.middleware.cors_fix import cors_middleware_handler
 
 # Configure logging
 logging.basicConfig(
@@ -61,14 +64,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure CORS
+# Configure CORS with enhanced handling
+# First add the standard CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=settings.CORS_ALLOW_METHODS,
     allow_headers=settings.CORS_ALLOW_HEADERS,
+    expose_headers=["*"],
 )
+
+# Add our fallback CORS handler to ensure headers are set on all responses
+app.add_middleware(BaseHTTPMiddleware, dispatch=cors_middleware_handler)
 
 
 # Exception handlers

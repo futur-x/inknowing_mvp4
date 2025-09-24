@@ -51,6 +51,8 @@ class AdminAuthService:
             Admin object if authentication successful, None otherwise
         """
         try:
+            logger.info(f"Admin login attempt for username: {username}")
+
             # Find admin by username or email
             stmt = select(Admin).where(
                 (Admin.username == username) | (Admin.email == username)
@@ -59,6 +61,7 @@ class AdminAuthService:
             admin = result.scalar_one_or_none()
 
             if not admin:
+                logger.warning(f"Admin not found: {username}")
                 await self._log_failed_login(username, ip_address, user_agent, "Admin not found")
                 return None
 
@@ -71,7 +74,7 @@ class AdminAuthService:
                 )
 
             # Check account status
-            if admin.status != AdminStatus.ACTIVE:
+            if admin.status != AdminStatus.ACTIVE.value:
                 await self._log_failed_login(username, ip_address, user_agent, f"Account {admin.status}")
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -79,14 +82,17 @@ class AdminAuthService:
                 )
 
             # Verify password
+            logger.info(f"Admin found: {admin.username}, status: {admin.status}, has_password: {bool(admin.password_hash)}")
+
             if not self.verify_password(password, admin.password_hash):
+                logger.warning(f"Invalid password for admin: {username}")
                 # Increment failed login attempts
                 admin.failed_login_attempts += 1
 
                 # Lock account after 5 failed attempts
                 if admin.failed_login_attempts >= 5:
                     admin.locked_until = datetime.utcnow() + timedelta(hours=1)
-                    admin.status = AdminStatus.SUSPENDED
+                    admin.status = AdminStatus.SUSPENDED.value
 
                 await self.db.commit()
                 await self._log_failed_login(username, ip_address, user_agent, "Invalid password")
@@ -224,7 +230,7 @@ class AdminAuthService:
             result = await self.db.execute(stmt)
             admin = result.scalar_one_or_none()
 
-            if not admin or admin.status != AdminStatus.ACTIVE:
+            if not admin or admin.status != AdminStatus.ACTIVE.value:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Admin account not active"
@@ -312,7 +318,7 @@ class AdminAuthService:
 
         stmt = select(Admin).where(
             Admin.id == admin_id,
-            Admin.status == AdminStatus.ACTIVE
+            Admin.status == AdminStatus.ACTIVE.value
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
@@ -454,7 +460,7 @@ class AdminAuthService:
         """Create audit log entry"""
         audit_log = AuditLog(
             admin_id=admin_id,
-            action=action,
+            action=action.value if hasattr(action, 'value') else action,
             description=description,
             ip_address=ip_address,
             user_agent=user_agent,
@@ -483,7 +489,7 @@ class AdminAuthService:
 
         audit_log = AuditLog(
             admin_id=admin.id if admin else None,
-            action=AuditActionType.FAILED_LOGIN,
+            action=AuditActionType.FAILED_LOGIN.value,
             description=f"Failed login attempt for {username}: {reason}",
             ip_address=ip_address,
             user_agent=user_agent,

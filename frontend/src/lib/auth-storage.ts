@@ -13,6 +13,8 @@ class AuthStorage {
   private static readonly REFRESH_TOKEN_KEY = 'refresh_token';
   private static readonly WS_TOKEN_KEY = 'ws_token';
   private static readonly TOKEN_DATA_KEY = 'auth_tokens';
+  private static readonly IS_ADMIN_KEY = 'is_admin';
+  private static readonly USER_DATA_KEY = 'user_data';
 
   /**
    * Store tokens in localStorage
@@ -121,6 +123,66 @@ class AuthStorage {
   }
 
   /**
+   * Set admin flag
+   */
+  static setIsAdmin(isAdmin: boolean): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      localStorage.setItem(this.IS_ADMIN_KEY, JSON.stringify(isAdmin));
+    } catch (error) {
+      console.error('Failed to set admin flag:', error);
+    }
+  }
+
+  /**
+   * Get admin flag
+   */
+  static getIsAdmin(): boolean {
+    if (typeof window === 'undefined') return false;
+
+    try {
+      const isAdmin = localStorage.getItem(this.IS_ADMIN_KEY);
+      return isAdmin ? JSON.parse(isAdmin) : false;
+    } catch (error) {
+      console.error('Failed to get admin flag:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Store user data
+   */
+  static setUser(user: any): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      if (user) {
+        localStorage.setItem(this.USER_DATA_KEY, JSON.stringify(user));
+      } else {
+        localStorage.removeItem(this.USER_DATA_KEY);
+      }
+    } catch (error) {
+      console.error('Failed to set user data:', error);
+    }
+  }
+
+  /**
+   * Get user data
+   */
+  static getUser(): any {
+    if (typeof window === 'undefined') return null;
+
+    try {
+      const userData = localStorage.getItem(this.USER_DATA_KEY);
+      return userData ? JSON.parse(userData) : null;
+    } catch (error) {
+      console.error('Failed to get user data:', error);
+      return null;
+    }
+  }
+
+  /**
    * Clear all tokens
    */
   static clearTokens(): void {
@@ -131,6 +193,8 @@ class AuthStorage {
       localStorage.removeItem(this.REFRESH_TOKEN_KEY);
       localStorage.removeItem(this.WS_TOKEN_KEY);
       localStorage.removeItem(this.TOKEN_DATA_KEY);
+      localStorage.removeItem(this.IS_ADMIN_KEY);
+      localStorage.removeItem(this.USER_DATA_KEY);
     } catch (error) {
       console.error('Failed to clear tokens:', error);
     }
